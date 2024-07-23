@@ -1,23 +1,23 @@
 import { TopNavBar } from './components/TopNavBar';
 import './globals.css'
 import SessionProvider from './SessionProvider';
-import { useStoreRedirectUrl } from './hooks/useStoreRedirectUrl';
+import ClientWrapper from './ClientWrapper';
 
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  useStoreRedirectUrl();
-  
   return (
     <html lang="en" className="h-full">
       <body className="h-full">
-      <SessionProvider>
-        <TopNavBar />
-        {children}
-      </SessionProvider>
+        <SessionProvider>
+          <ClientWrapper>
+            <TopNavBar />
+            {children}
+          </ClientWrapper>
+        </SessionProvider>
       </body>
     </html>
-  )
+  );
 }
