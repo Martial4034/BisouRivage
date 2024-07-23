@@ -1,13 +1,13 @@
-import NextAuth, { NextAuthOptions } from "next-auth"
-import CredentialsProvider from "next-auth/providers/credentials";
+import NextAuth, { NextAuthOptions } from 'next-auth';
+import CredentialsProvider from 'next-auth/providers/credentials';
+import { getUserRole } from '@/app/firebaseAdmin';
 
 export const authOptions: NextAuthOptions = {
-  // Configure one or more authentication providers
   pages: {
-    signIn: '/auth/signin'
+    signIn: '/auth/signin',
   },
   session: {
-    strategy: 'jwt'
+    strategy: 'jwt',
   },
   providers: [
     CredentialsProvider({
@@ -16,11 +16,27 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials: any): Promise<any> {
         const user = JSON.parse(credentials.user);
         if (user) {
-          return user;
+          return { ...user, uid: user.uid, role: await getUserRole(user.uid) };
         }
         return null;
-      }
-    })
+      },
+    }),
   ],
-}
-export default NextAuth(authOptions)
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.uid = user.uid;
+        token.role = user.role;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user.uid = token.uid as string;
+        session.user.role = token.role as string;
+      }
+      return session;
+    },
+  },
+};
+export default NextAuth(authOptions);

@@ -22,3 +22,11 @@ if (!admin.apps.length) {
 export const authAdmin = admin.auth();
 export const firestoreAdmin = admin.firestore();
 export const FieldValue = admin.firestore.FieldValue;
+
+export async function getUserRole(uid: string): Promise<string | null> {
+  const userDoc = await firestoreAdmin.collection('users').doc(uid).get();
+  if (userDoc.exists) {
+    return userDoc.data()?.role ?? null;
+  }
+  return null;
+}

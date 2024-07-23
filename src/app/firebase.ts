@@ -6,13 +6,13 @@ import { getFirestore,  } from 'firebase/firestore';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_CLIENT_API_KEY,
-  authDomain: process.env.FIREBASE_CLIENT_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_CLIENT_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_CLIENT_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_CLIENT_SMS_SENDER_ID,
-  appId: process.env.FIREBASE_CLIENT_APP_ID,
-  measurementId: process.env.FIREBASE_CLIENT_MEAUSUREMENT_ID
+  apiKey: "AIzaSyCJFgI0HxmUqQfvdGSzHL4g6RwtTEKf0_Y",
+  authDomain: "bisourivage.firebaseapp.com",
+  projectId: "bisourivage",
+  storageBucket: "bisourivage.appspot.com",
+  messagingSenderId: "1060895700324",
+  appId: "1:1060895700324:web:2de7565cede429314fb671",
+  measurementId: "G-S29V577DYX"
 };
 
 // Initialize Firebase

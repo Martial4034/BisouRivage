@@ -11,7 +11,16 @@ export async function POST(req: NextRequest) {
   try {
     let link;
     let template;
+
     if (isSignUp) {
+      // Vérifiez si l'utilisateur existe déjà
+      try {
+        await authAdmin.getUserByEmail(email);
+        return NextResponse.json({ message: 'The email address is already in use by another account.' }, { status: 400 });
+      } catch (error) {
+        // L'utilisateur n'existe pas, continuez avec la création
+      }
+
       // Générer un mot de passe aléatoire
       const password = Array(24).fill('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz').map(x => x[Math.floor(Math.random() * x.length)]).join('');
 
@@ -27,8 +36,8 @@ export async function POST(req: NextRequest) {
         createdAt: FieldValue.serverTimestamp(),
         role: 'user',
         lastLogin: FieldValue.serverTimestamp(),
-        lastEmailSent: FieldValue.serverTimestamp(), // Champs pour traquer le dernier mail envoyé
-        emailSent: 1, // Compteur de mails envoyés
+        lastEmailSent: FieldValue.serverTimestamp(),
+        emailSent: 1,
         ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip'),
       });
 

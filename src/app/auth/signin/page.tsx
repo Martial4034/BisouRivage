@@ -1,10 +1,13 @@
+// src/app/auth/signin/page.tsx
 'use client';
 import { auth } from '@/app/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { CircularProgress } from '@mui/material';
-import { useRouter } from 'next/navigation';
 import { CustomAlertDialog } from '@/app/components/ui/CustomAlertDialog';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { useStoreRedirectUrl } from '@/app/hooks/useStoreRedirectUrl';
 
 export default function Signin() {
   const [email, setEmail] = useState('');
@@ -14,7 +17,18 @@ export default function Signin() {
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const [timer, setTimer] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useStoreRedirectUrl();
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      const redirectUrl = sessionStorage.getItem('redirectUrl') || '/';
+      router.push(redirectUrl);
+    }
+  }, [status, router]);
 
   useEffect(() => {
     let countdown: NodeJS.Timeout | undefined;
@@ -52,6 +66,7 @@ export default function Signin() {
         await sendSignInLink(email, false);
       } else {
         // Nouvel utilisateur
+        window.localStorage.setItem('emailForSignIn', email);
         setIsModalOpen(true);
         setIsLoading(false);
       }
@@ -106,57 +121,52 @@ export default function Signin() {
   const handleClose = () => {
     setIsModalOpen(false);
   };
-  return (
-    <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8 bg-gray-100">
-      <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-        <img
-          className="mx-auto h-10 w-auto"
-          src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500"
-          alt="Your Company"
-        />
-        <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900">
-          Sign in to your account
-        </h2>
-      </div>
 
-      <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-        <div className="space-y-6">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
-              Email address
-            </label>
-            <div className="mt-2">
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="block w-full rounded-md border-0 bg-gray-50 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-              />
+  return (
+    <>
+      <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-sm">
+          <img
+            className="mx-auto h-10 w-auto"
+            src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500"
+            alt="Your Company"
+          />
+          <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-white">
+            Sign in to your account
+          </h2>
+          <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+            <div className="space-y-6">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium leading-6 text-white">
+                  Email address
+                </label>
+                <div className="mt-2">
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+                  />
+                </div>
+              </div>
+              <div>
+                <button
+                  disabled={!email || isButtonDisabled}
+                  onClick={signIn}
+                  className={`disabled:opacity-40 flex w-full justify-center rounded-md bg-indigo-500 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
+                    isButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  {isLoading ? <CircularProgress size={20} color="inherit" /> : 'Sign In'}
+                </button>
+              </div>
+              {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+              {success && <p className="mt-2 text-sm text-green-600">{success}</p>}
             </div>
           </div>
-
-          <div>
-            <button
-              disabled={!email || isButtonDisabled}
-              onClick={signIn}
-              className={`disabled:opacity-40 flex w-full justify-center rounded-md bg-indigo-500 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${
-                isButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-            >
-              {isLoading ? (
-                <CircularProgress size={20} color="inherit" />
-              ) : timer > 0 ? (
-                `${timer} secondes...`
-              ) : (
-                'Sign In'
-              )}
-            </button>
-          </div>
-          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-          {success && <p className="mt-2 text-sm text-green-600">{success}</p>}
         </div>
       </div>
 
@@ -168,6 +178,6 @@ export default function Signin() {
         actionText="Recevoir"
         onActionClick={handleSignUp}
       />
-    </div>
+    </>
   );
 }
