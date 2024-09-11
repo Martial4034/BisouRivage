@@ -1,3 +1,5 @@
+'use client';
+
 import { ShoppingCart } from 'lucide-react';
 import {
   Sheet,
@@ -26,7 +28,7 @@ const Cart = () => {
   }, []);
 
   const cartTotal = items.reduce(
-    (total, item) => total + (item.price * item.quantity),
+    (total, item) => total + item.price * item.quantity,
     0
   );
 
@@ -53,7 +55,16 @@ const Cart = () => {
               <ScrollArea>
                 {items.map((item) => (
                   <CartItem
-                    product={item}
+                    product={{
+                      id: item.id,
+                      name: item.name,
+                      price: item.price,
+                      image: item.image,
+                      format: item.format,
+                      quantity: item.quantity,
+                      stock: item.stock,
+                      artist: item.artist
+                    }} // Passer les bonnes propriétés à CartItem
                     key={item.id}
                   />
                 ))}
@@ -80,7 +91,7 @@ const Cart = () => {
                       className: 'w-full',
                     })}
                   >
-                    Continuer vers le paiement
+                    Continue to Checkout
                   </Link>
                 </SheetTrigger>
               </SheetFooter>

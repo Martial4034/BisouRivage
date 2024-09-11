@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 
 interface CartItem {
   id: string;
+  name: string;
   price: number;
   image: string;
   format: string;
