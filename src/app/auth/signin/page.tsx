@@ -1,12 +1,10 @@
-// src/app/auth/signin/page.tsx
 'use client';
-import { auth } from '@/app/firebase';
-import { useRouter, useSearchParams } from 'next/navigation';
+
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { CircularProgress } from '@mui/material';
 import { CustomAlertDialog } from '@/app/components/ui/CustomAlertDialog';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useStoreRedirectUrl } from '@/app/hooks/useStoreRedirectUrl';
 
 export default function Signin() {
@@ -19,7 +17,6 @@ export default function Signin() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { status } = useSession();
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useStoreRedirectUrl();
 
