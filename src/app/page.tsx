@@ -1,22 +1,21 @@
-'use client';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+"use client";
+
+import { useState } from "react";
+import Breadcrumbs from "@/app/components/home/Breadcrumbs";
+import ImageGrid from "@/app/components/home/ImageGrid";
 
 export default function Home() {
-  const { data: session, status } = useSession();
-  console.log(session);
-  const router = useRouter();
-
-  
-  if (status === 'loading') {
-    return <div>Loading...</div>;
-  }
+  const [formatFilter, setFormatFilter] = useState("all"); // Filtre pour Horizontal / Vertical
 
   return (
-    <div className="p-8">
-      <div className='text-black'>{session?.user?.email}</div>
-      <div className='text-black'>{session?.user?.role}</div>
+    <div className="h-full bg-white px-8">
+      {/* Breadcrumbs pour la navigation */}
+      <Breadcrumbs formatFilter={formatFilter} setFormatFilter={setFormatFilter} />
+
+      <div className="max-w-screen-xl mx-auto">
+        {/* Affichage des images */}
+        <ImageGrid formatFilter={formatFilter} />
+      </div>
     </div>
   );
 }

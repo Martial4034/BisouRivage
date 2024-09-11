@@ -15,9 +15,9 @@ const firebaseConfig = {
   measurementId: "G-S29V577DYX"
 };
 
-// Initialize Firebase
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-const db = getFirestore();
-const auth = getAuth();
+// Initialisation de Firebase
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-export { app, db, auth }
+export { db, auth };

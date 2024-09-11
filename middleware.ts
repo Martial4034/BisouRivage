@@ -8,6 +8,15 @@ export async function middleware(req: NextRequest) {
 
   const protectedPaths = ['/auth/signin', '/auth/signin-confirm'];
 
+  // Les pages réservées aux artistes
+  const artistProtectedPaths = ['/dashboard/artiste', '/api/artiste/:path*'];
+
+  if (artistProtectedPaths.some((path) => req.nextUrl.pathname.startsWith(path))) {
+    if (!token || token.role !== 'artiste') {
+      return NextResponse.redirect(new URL('/', req.url));
+    }
+  }
+
   if (protectedPaths.includes(req.nextUrl.pathname)) {
     if (token) {
       const redirectUrl = req.cookies.get('redirectUrl')?.value || '/';
