@@ -76,7 +76,7 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Détails de l'image {params.id}</h1>
+      <h1 className="text-3xl font-bold mb-6">{params.id}</h1>
 
       {/* Afficher les détails de l'image */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
