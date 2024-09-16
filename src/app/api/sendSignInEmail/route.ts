@@ -46,10 +46,9 @@ export async function POST(req: NextRequest) {
 
       // Générer le lien de connexion
       const actionCodeSettings = {
-        url: `${process.env.NEXTAUTH_URL}/auth/signin-confirm?email=${encodeURIComponent(email)}`, 
+        url: `${process.env.NEXTAUTH_URL}/auth/signin-confirm`,
         handleCodeInApp: true,
       };
-      
 
       link = await authAdmin.generateSignInWithEmailLink(email, actionCodeSettings);
     } else {

@@ -22,27 +22,21 @@ export default function SigninConfirm() {
 
   useEffect(() => {
     const handleSignIn = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      let email = urlParams.get('email'); // Récupérer l'email depuis l'URL
-
       if (isSignInWithEmailLink(auth, window.location.href)) {
-        // Si l'email n'est pas dans l'URL, on peut vérifier dans le stockage local
+        let email = window.localStorage.getItem('emailForSignIn');
+        let redirectUrl = window.localStorage.getItem('redirectUrl');
+
         if (!email) {
-          const storedEmail = window.localStorage.getItem('emailForSignIn');
-          if (storedEmail) {
-            email = storedEmail;
-          } else {
-            setError('No email found. Please try signing in again.');
-            setLoading(false);
-            return;
-          }
+          setError('No email found in local storage. Please try signing in again.');
+          setLoading(false);
+          return;
         }
 
         try {
           const result = await signInWithEmailLink(auth, email, window.location.href);
-          await signIn('credentials', { user: JSON.stringify(result.user), redirect: true });
+          await signIn('credentials', { user: JSON.stringify(result.user), redirect: true, callbackUrl: redirectUrl || '/' });
         } catch (error) {
-          console.error('Error signing in with email link:', error);
+          console.log(error);
           setError('Failed to sign in with email link. Please try again.');
           setLoading(false);
         }
@@ -56,27 +50,22 @@ export default function SigninConfirm() {
   }, [router]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white text-black">
-      <div className="w-full max-w-md px-6 py-12 bg-white text-black shadow-lg rounded-lg">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+    <>
+      <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-sm">
           <img
-            className="mx-auto h-20 w-auto mb-8" // Logo plus grand avec marge
-            src="/logo.svg" // Le chemin vers ton logo personnalisé
-            alt="Your Company Logo"
+            className="mx-auto h-10 w-auto"
+            src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500"
+            alt="Your Company"
           />
-          <h2 className="text-center text-3xl font-bold tracking-tight text-black">
+          <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-white">
             Sign in to your account
           </h2>
-        </div>
-
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md text-center">
-          {loading ? (
-            <CircularProgress color="inherit" />
-          ) : error ? (
-            <p className="text-red-500">{error}</p>
-          ) : null}
+          <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm text-center text-gray-900">
+            {loading ? <CircularProgress color="inherit" /> : error ? <p className="text-red-500">{error}</p> : null}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
