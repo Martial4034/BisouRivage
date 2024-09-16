@@ -1,18 +1,17 @@
-"use client"; // Assurer que ce fichier est bien client-side
+"use client";
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import ArtisteFormContent from '@/app/components/artiste/form'; // Importer votre composant
-
+import ArtisteFormContent from '@/app/components/artiste/form';
 export default function ArtisteFormPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search); // Obtenir les paramètres de l'URL
-    const id = params.get('edit'); // Obtenir la valeur du paramètre "edit"
-    if (id) {
-      setEditId(id);
+  
+    const storedEditId = localStorage.getItem('editId');
+    if (storedEditId) {
+      setEditId(storedEditId);
     }
   }, [router]);
 
