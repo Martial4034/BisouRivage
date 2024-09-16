@@ -1,16 +1,16 @@
-"use client";
+"use client"; // Assurer que ce fichier est bien client-side
 
 import { useSession } from 'next-auth/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/app/components/ui/button';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { CircularProgress } from '@mui/material';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { fetchData } from "@/app/lib/fetchData"; // Fonction pour fetch les données existantes
+import { fetchData } from "@/app/lib/fetchData";
 
-// Schéma centralisé de validation
+// Schéma de validation
 const schema = z.object({
   description: z.string().min(1, 'La description est requise'),
   format: z.enum(['vertical', 'horizontal'], {
@@ -31,8 +31,6 @@ const isValidId = (id: string) => {
   return regex.test(id);
 };
 
-
-
 interface ArtisteFormContentProps {
   editId: string | null;
 }
@@ -41,7 +39,7 @@ function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-
+  const searchParams = useSearchParams();
   
   const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm({
     resolver: zodResolver(schema),
@@ -50,7 +48,7 @@ function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
-  const [uploadedImages, setUploadedImages] = useState<(File | { link: string } | null)[]>([null, null, null, null, null, null]); // 6 placeholders pour les images
+  const [uploadedImages, setUploadedImages] = useState<(File | { link: string } | null)[]>([null, null, null, null, null, null]);
   const [selectedSizes, setSelectedSizes] = useState<{ size: string; stock: number; price: number }[]>([]);
 
   const sizesWithDescription = [
@@ -62,15 +60,13 @@ function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
 
   useEffect(() => {
     const fetchProductData = async () => {
-      if (!session) return; // Ne rien faire tant que la session n'est pas chargée
+      if (!session) return;
 
-      // Vérification du rôle de l'utilisateur
       if (session.user.role !== 'artiste') {
         router.push('/403');
         return;
       }
 
-      // Si l'utilisateur est en mode édition (présence de editId)
       if (editId) {
         if (!isValidId(editId)) {
           router.push('/404');
@@ -83,13 +79,12 @@ function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
           return;
         }
 
-        // Vérifier que l'email de l'utilisateur correspond à celui du produit
         if (session.user.email !== data.email) {
           router.push('/403');
           return;
         }
 
-        reset(data); // Pré-remplir le formulaire
+        reset(data);
         setUploadedImages(data.images.map((image: { link: string }) => ({ link: image.link })));
         setSelectedSizes(data.sizes);
       }
@@ -100,14 +95,14 @@ function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
   }, [session, editId, reset, router]);
 
   if (loading) {
-    return <>
+    return (
       <div className="max-w-6xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-8">
         <h1 className="text-3xl mb-8 text-left font-semibold text-gray-800">Chargement...</h1>
         <div className="flex justify-center">
           <CircularProgress />
         </div>
       </div>
-    </>; 
+    );
   }
 
   const handleImageChange = (index: number, file: File | null) => {
@@ -116,14 +111,13 @@ function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
       newImages[index] = file;
       return newImages;
     });
-    setValue('images', [...uploadedImages]);  // Mets à jour directement les images sans filtrer
+    setValue('images', [...uploadedImages]); 
   };
 
-  // Gestion de la suppression d'une image
   const handleRemoveImage = (index: number) => {
     setUploadedImages((prevImages) => {
       const newImages = [...prevImages];
-      newImages[index] = null;  // On met null pour marquer cette case comme vide
+      newImages[index] = null;  
       return newImages;
     });
   };
@@ -140,7 +134,7 @@ function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
     setSelectedSizes(
       selectedSizes.map((s) => s.size === size ? { ...s, [key]: value } : s)
     );
-    setValue('sizes', selectedSizes); // Mettre à jour la valeur dans le formulaire
+    setValue('sizes', selectedSizes); 
   };
 
   const onSubmit = async (data: any) => {
@@ -160,12 +154,11 @@ function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
       formData.append('format', data.format);
       formData.append('sizes', JSON.stringify(selectedSizes));
 
-      // Ajouter toutes les images (même les anciennes) au FormData
       uploadedImages.forEach((image, index) => {
         if (image && (image instanceof File)) {
-          formData.append(`images_${index}`, image);  // Ajouter les nouvelles images
+          formData.append(`images_${index}`, image); 
         } else if (image && (image as { link: string }).link) {
-          formData.append(`images_${index}`, (image as { link: string }).link);  // Ajouter les liens des anciennes images
+          formData.append(`images_${index}`, (image as { link: string }).link); 
         }
       });
 
@@ -186,10 +179,10 @@ function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
     }
   };
 
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-6xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-8">
       <h1 className="text-3xl mb-8 text-left font-semibold text-gray-800">{editId ? "Modifier l'Upload" : "Upload des photos"}</h1>
+      {/* Form content */}
 
       {/* Format */}
       <div className="mb-6">
@@ -341,18 +334,13 @@ function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
 
       {error && <p className="text-red-500 mt-4">{error}</p>}
       {success && <p className="text-green-500 mt-4">{success}</p>}
-    </form>
+      </form>
   );
 }
-
 
 export default function ArtisteFormPage() {
   const searchParams = useSearchParams();
   const editId = searchParams ? searchParams.get('edit') : null;
 
-  return (
-    <Suspense fallback={<CircularProgress />}>
-      <ArtisteFormContent editId={editId} />
-    </Suspense>
-  );
+  return <ArtisteFormContent editId={editId} />;
 }
