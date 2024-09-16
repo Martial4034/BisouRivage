@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/app/components/ui/button';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { CircularProgress } from '@mui/material';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { fetchData } from "@/app/lib/fetchData"; // Fonction pour fetch les données existantes
@@ -16,12 +16,12 @@ const schema = z.object({
   format: z.enum(['vertical', 'horizontal'], {
     required_error: "Le format est requis",
   }),
-  images: z.array(z.any()).min(1, 'Au moins une image est requise'),
+  images: z.array(z.any()).min(1, 'Au moins deux images sont requises'),
   sizes: z.array(
     z.object({
       size: z.string(),
-      price: z.number().min(1, "Le prix doit être supérieur ou égal à 1€"),
-      stock: z.number().min(3, "Le stock doit être supérieur ou égal à 3"),
+      price: z.number().min(1, "Le prix doit être supérieur ou égal à 2€"),
+      stock: z.number().min(3, "Le stock doit être supérieur ou égal à 4"),
     })
   ).min(1, 'Vous devez sélectionner au moins un format'),
 });
@@ -31,12 +31,17 @@ const isValidId = (id: string) => {
   return regex.test(id);
 };
 
-export default function ArtisteForm() {
+
+
+interface ArtisteFormContentProps {
+  editId: string | null;
+}
+
+function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const editId = searchParams ? searchParams.get('edit') : null;
+
   
   const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm({
     resolver: zodResolver(schema),
@@ -105,19 +110,22 @@ export default function ArtisteForm() {
     </>; 
   }
 
-  // Gestion de l'upload ou du remplacement des images
   const handleImageChange = (index: number, file: File | null) => {
     setUploadedImages((prevImages) => {
       const newImages = [...prevImages];
       newImages[index] = file;
       return newImages;
     });
-    setValue('images', [...uploadedImages.filter(Boolean)]);
+    setValue('images', [...uploadedImages]);  // Mets à jour directement les images sans filtrer
   };
 
   // Gestion de la suppression d'une image
   const handleRemoveImage = (index: number) => {
-    handleImageChange(index, null);
+    setUploadedImages((prevImages) => {
+      const newImages = [...prevImages];
+      newImages[index] = null;  // On met null pour marquer cette case comme vide
+      return newImages;
+    });
   };
 
   const handleToggleSize = (size: string) => {
@@ -142,7 +150,7 @@ export default function ArtisteForm() {
 
     try {
       if (!uploadedImages.some((image) => image)) {
-        setError('Vous devez uploader au moins une image.');
+        setError('Vous devez uploader au moins deux images.');
         setIsLoading(false);
         return;
       }
@@ -152,9 +160,12 @@ export default function ArtisteForm() {
       formData.append('format', data.format);
       formData.append('sizes', JSON.stringify(selectedSizes));
 
+      // Ajouter toutes les images (même les anciennes) au FormData
       uploadedImages.forEach((image, index) => {
         if (image && (image instanceof File)) {
-          formData.append(`images_${index}`, image);
+          formData.append(`images_${index}`, image);  // Ajouter les nouvelles images
+        } else if (image && (image as { link: string }).link) {
+          formData.append(`images_${index}`, (image as { link: string }).link);  // Ajouter les liens des anciennes images
         }
       });
 
@@ -331,5 +342,17 @@ export default function ArtisteForm() {
       {error && <p className="text-red-500 mt-4">{error}</p>}
       {success && <p className="text-green-500 mt-4">{success}</p>}
     </form>
+  );
+}
+
+
+export default function ArtisteFormPage() {
+  const searchParams = useSearchParams();
+  const editId = searchParams ? searchParams.get('edit') : null;
+
+  return (
+    <Suspense fallback={<CircularProgress />}>
+      <ArtisteFormContent editId={editId} />
+    </Suspense>
   );
 }

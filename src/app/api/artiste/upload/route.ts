@@ -31,7 +31,13 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    const images = formData.getAll("images[]") as File[]; // Fetch all images from 'images[]'
+    // Correct retrieval of images with dynamic keys (images_0, images_1, etc.)
+    const images: any[] = [];
+    formData.forEach((value, key) => {
+      if (key.startsWith("images_") && value instanceof File) {
+        images.push(value);
+      }
+    });
 
     if (images.length === 0) {
       return NextResponse.json(
@@ -93,7 +99,7 @@ async function getNextIdForFormat(formatPrefix: string): Promise<string> {
     .get();
 
   if (lastDoc.empty) {
-    return "099";
+    return "001";
   }
 
   const lastId = lastDoc.docs[0].id;

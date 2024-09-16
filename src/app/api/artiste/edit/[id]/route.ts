@@ -39,57 +39,24 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       stock: sizeObj.stock,
     }));
 
-    const images = formData.getAll('images[]') as File[];
-
-    if (!existingDoc.exists) {
-      console.error(`Document with ID ${docId} not found.`);
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
-    }
-    const existingImages = existingData?.images || [];
-
-    // Suppression de toutes les anciennes images du storage Firebase
-    for (let i = 0; i < existingImages.length; i++) {
-      const existingImageLink = existingImages[i]?.link;
-      if (existingImageLink) {
-        try {
-          const filePath = existingImageLink.split(`${storageAdmin.bucket().name}/`)[1]; 
-          
-          if (!filePath) {
-            console.error(`Le chemin de l'image est incorrect : ${existingImageLink}`);
-            continue;
-          }
-    
-          const oldImageRef = storageAdmin.bucket().file(filePath);
-          
-          console.log(`Tentative de suppression de l'image: ${filePath}`);
-          
-          // Suppression de l'image
-          await oldImageRef.delete();
-          console.log(`Image supprimée avec succès : ${existingImageLink}`);
-        } catch (error) {
-          console.error(`Erreur lors de la suppression de l'ancienne image ${existingImageLink}:`, error);
-        }
-      }
-    }
-    
-
-    // Upload des nouvelles images
+    // Collect all images (new files or existing links)
     const imageLinks: { id: number, link: string }[] = [];
-    for (let i = 0; i < images.length; i++) {
-      const image = images[i];
-      if (image && image.size > 0) {
+    for (let i = 0; i < 6; i++) {
+      const image = formData.get(`images_${i}`);
+      if (image instanceof File) {
         // Nouvelle image à uploader
         const arrayBuffer = await image.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
         const imagePath = `photos/${token.email}/${docId}/image_${i}_${Date.now()}.jpg`; // Utilisation d'un timestamp pour éviter le cache
         const fileRef = storageAdmin.bucket().file(imagePath);
-
-        // Enregistrer la nouvelle image
         await fileRef.save(buffer, { contentType: image.type });
         await fileRef.makePublic();
         const publicUrl = `https://storage.googleapis.com/${storageAdmin.bucket().name}/${imagePath}`;
         console.log(`Nouvelle image uploadée : ${publicUrl}`);
         imageLinks.push({ id: i, link: publicUrl });
+      } else if (typeof image === 'string') {
+        // Si c'est une ancienne image (lien)
+        imageLinks.push({ id: i, link: image });
       }
     }
 
@@ -109,3 +76,4 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
