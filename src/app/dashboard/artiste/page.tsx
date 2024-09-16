@@ -265,7 +265,6 @@ function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
       </div>
 
       {/* Gestion des images (6 cases maximum) */}
-
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700">Images (maximum 6)</label>
         <div className="grid grid-cols-3 gap-4 mt-4">
@@ -326,8 +325,8 @@ function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
         </div>
         {errors.images && <p className="text-red-500 mt-1">{String(errors.images.message)}</p>}
       </div>
-
-
+  
+      {/* Submit Button */}
       <Button disabled={isLoading} type="submit" className="w-full py-3 bg-indigo-600 text-white hover:bg-white hover:border-indigo-600 hover:text-indigo-600 transition-all duration-300">
         {isLoading ? <CircularProgress size={20} /> : editId ? 'Mettre à jour' : 'Upload'}
       </Button>
@@ -339,8 +338,15 @@ function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
 }
 
 export default function ArtisteFormPage() {
+  const [editId, setEditId] = useState<string | null>(null);
   const searchParams = useSearchParams();
-  const editId = searchParams ? searchParams.get('edit') : null;
+
+  useEffect(() => {
+    const id = searchParams?.get('edit');
+    if (id) {
+      setEditId(id);
+    }
+  }, [searchParams]);
 
   return <ArtisteFormContent editId={editId} />;
 }
