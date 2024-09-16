@@ -1,5 +1,5 @@
-// src/app/auth/signin-confirm/page.tsx
 'use client';
+
 import { auth } from '@/app/firebase';
 import { isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
 import { signIn, useSession } from 'next-auth/react';
@@ -50,22 +50,27 @@ export default function SigninConfirm() {
   }, [router]);
 
   return (
-    <>
-      <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-sm">
+    <div className="flex min-h-screen items-center justify-center bg-white text-black">
+      <div className="w-full max-w-md px-6 py-12 bg-white text-black shadow-lg rounded-lg">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <img
-            className="mx-auto h-10 w-auto"
-            src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500"
-            alt="Your Company"
+            className="mx-auto h-20 w-auto mb-8" // Logo plus grand avec marge
+            src="/logo.svg" // Le chemin vers ton logo personnalisé
+            alt="Your Company Logo"
           />
-          <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-white">
+          <h2 className="text-center text-3xl font-bold tracking-tight text-black">
             Sign in to your account
           </h2>
-          <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm text-center text-gray-900">
-            {loading ? <CircularProgress color="inherit" /> : error ? <p className="text-red-500">{error}</p> : null}
-          </div>
+        </div>
+
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md text-center">
+          {loading ? (
+            <CircularProgress color="inherit" />
+          ) : error ? (
+            <p className="text-red-500">{error}</p>
+          ) : null}
         </div>
       </div>
-    </>
+    </div>
   );
 }

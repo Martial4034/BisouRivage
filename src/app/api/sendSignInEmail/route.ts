@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     // Envoyer l'email avec Resend
     const { data, error } = await resend.emails.send({
-      from: `${process.env.PROJECT_NAME} <onboarding@laubier.online>`,
+      from: `${process.env.PROJECT_NAME} <onboarding@bisourivage.fr>`,
       to: [to],
       subject: isSignUp ? 'Bienvenue sur Bisourivage' : 'Votre lien de connexion',
       text: '',

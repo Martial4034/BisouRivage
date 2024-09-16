@@ -1,39 +1,51 @@
 "use client";
 
+import { useSession } from 'next-auth/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/app/components/ui/button';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { CircularProgress } from '@mui/material';
-import Sortable from 'sortablejs';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { fetchData } from "@/app/lib/fetchData"; // Fonction pour fetch les données existantes
 
-// Validation Schema avec Zod (ajout des prix pour chaque taille)
+// Schéma centralisé de validation
 const schema = z.object({
   description: z.string().min(1, 'La description est requise'),
   format: z.enum(['vertical', 'horizontal'], {
     required_error: "Le format est requis",
   }),
-  images: z.array(z.instanceof(File)).min(1, 'Au moins une image est requise'), // Requiert au moins une image
+  images: z.array(z.any()).min(1, 'Au moins une image est requise'),
   sizes: z.array(
     z.object({
       size: z.string(),
-      price: z.number().min(1, "Le prix doit être supérieur ou égal à 1€"), // Validation du prix
-      stock: z.number().min(3, "Le stock doit être supérieur ou égal à 4"), // Validation du stock
+      price: z.number().min(1, "Le prix doit être supérieur ou égal à 1€"),
+      stock: z.number().min(3, "Le stock doit être supérieur ou égal à 3"),
     })
-  ).min(1, 'Vous devez sélectionner au moins un format')
+  ).min(1, 'Vous devez sélectionner au moins un format'),
 });
 
+const isValidId = (id: string) => {
+  const regex = /^[VH]\d+$/;
+  return regex.test(id);
+};
+
 export default function ArtisteForm() {
-  const { register, handleSubmit, formState: { errors }, setValue } = useForm({
+  const { data: session } = useSession();
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams ? searchParams.get('edit') : null;
+  
+  const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm({
     resolver: zodResolver(schema),
   });
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
-  const [uploadedImages, setUploadedImages] = useState<File[]>([]);
-  const imageContainerRef = useRef<HTMLDivElement | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<(File | { link: string } | null)[]>([null, null, null, null, null, null]); // 6 placeholders pour les images
   const [selectedSizes, setSelectedSizes] = useState<{ size: string; stock: number; price: number }[]>([]);
 
   const sizesWithDescription = [
@@ -44,26 +56,68 @@ export default function ArtisteForm() {
   ];
 
   useEffect(() => {
-    if (imageContainerRef.current) {
-      Sortable.create(imageContainerRef.current, {
-        animation: 150,
-        onEnd: (evt) => {
-          const { oldIndex, newIndex } = evt;
-          if (oldIndex !== undefined && newIndex !== undefined) {
-            const reorderedImages = [...uploadedImages];
-            const [movedImage] = reorderedImages.splice(oldIndex, 1);
-            reorderedImages.splice(newIndex, 0, movedImage);
-            setUploadedImages(reorderedImages);
-          }
-        },
-      });
-    }
-  }, [uploadedImages]);
+    const fetchProductData = async () => {
+      if (!session) return; // Ne rien faire tant que la session n'est pas chargée
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setUploadedImages((prev) => [...prev, ...files]);
-    setValue("images", [...uploadedImages, ...files]);
+      // Vérification du rôle de l'utilisateur
+      if (session.user.role !== 'artiste') {
+        router.push('/403');
+        return;
+      }
+
+      // Si l'utilisateur est en mode édition (présence de editId)
+      if (editId) {
+        if (!isValidId(editId)) {
+          router.push('/404');
+          return;
+        }
+
+        const data = await fetchData('uploads', editId);
+        if (!data) {
+          router.push('/404');
+          return;
+        }
+
+        // Vérifier que l'email de l'utilisateur correspond à celui du produit
+        if (session.user.email !== data.email) {
+          router.push('/403');
+          return;
+        }
+
+        reset(data); // Pré-remplir le formulaire
+        setUploadedImages(data.images.map((image: { link: string }) => ({ link: image.link })));
+        setSelectedSizes(data.sizes);
+      }
+      setLoading(false);
+    };
+
+    fetchProductData();
+  }, [session, editId, reset, router]);
+
+  if (loading) {
+    return <>
+      <div className="max-w-6xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-8">
+        <h1 className="text-3xl mb-8 text-left font-semibold text-gray-800">Chargement...</h1>
+        <div className="flex justify-center">
+          <CircularProgress />
+        </div>
+      </div>
+    </>; 
+  }
+
+  // Gestion de l'upload ou du remplacement des images
+  const handleImageChange = (index: number, file: File | null) => {
+    setUploadedImages((prevImages) => {
+      const newImages = [...prevImages];
+      newImages[index] = file;
+      return newImages;
+    });
+    setValue('images', [...uploadedImages.filter(Boolean)]);
+  };
+
+  // Gestion de la suppression d'une image
+  const handleRemoveImage = (index: number) => {
+    handleImageChange(index, null);
   };
 
   const handleToggleSize = (size: string) => {
@@ -87,15 +141,8 @@ export default function ArtisteForm() {
     setSuccess('');
 
     try {
-      // Validation des tailles et du stock
-      if (selectedSizes.length === 0) {
-        setError('Vous devez sélectionner au moins un format.');
-        setIsLoading(false);
-        return;
-      }
-
-      if (selectedSizes.some((size) => size.stock < 3)) {
-        setError('Le stock de chaque format doit être supérieur ou égal à 3.');
+      if (!uploadedImages.some((image) => image)) {
+        setError('Vous devez uploader au moins une image.');
         setIsLoading(false);
         return;
       }
@@ -105,17 +152,22 @@ export default function ArtisteForm() {
       formData.append('format', data.format);
       formData.append('sizes', JSON.stringify(selectedSizes));
 
-      uploadedImages.forEach((image) => formData.append('images', image));
+      uploadedImages.forEach((image, index) => {
+        if (image && (image instanceof File)) {
+          formData.append(`images_${index}`, image);
+        }
+      });
 
-      const response = await fetch('/api/artiste/upload', {
+      const apiEndpoint = editId ? `/api/artiste/edit/${editId}` : '/api/artiste/upload';
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         body: formData,
       });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message || 'L\'upload a échoué.');
+      if (!response.ok) throw new Error(result.message || "L'upload ou la mise à jour a échoué.");
 
-      setSuccess('Images uploadées avec succès!');
+      setSuccess(editId ? 'Mise à jour réussie!' : 'Images et formats uploadés avec succès!');
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -123,9 +175,10 @@ export default function ArtisteForm() {
     }
   };
 
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-6xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-8">
-      <h1 className="text-3xl mb-8 text-left font-semibold text-gray-800">Upload des photos</h1>
+      <h1 className="text-3xl mb-8 text-left font-semibold text-gray-800">{editId ? "Modifier l'Upload" : "Upload des photos"}</h1>
 
       {/* Format */}
       <div className="mb-6">
@@ -164,76 +217,115 @@ export default function ArtisteForm() {
         {errors.description && <p className="text-red-500 mt-1">{String(errors.description.message)}</p>}
       </div>
 
-      {/* Toggle Group pour les formats avec validation de stock et prix */}
+      {/* Toggle Group pour les formats et le stock */}
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700">Formats disponibles</label>
         <div className="flex flex-col space-y-4 mt-2">
           {sizesWithDescription.map(({ size, description }) => (
-        <div key={size} className="flex items-center space-x-4">
-          <label className="cursor-pointer flex-1" onClick={() => handleToggleSize(size)}>
-            <input
-          type="checkbox"
-          checked={selectedSizes.some((s) => s.size === size)}
-          className="form-checkbox mr-2"
-            />
-            <span className="text-gray-700">{description}</span>
-          </label>
+            <div key={size} className="flex items-center space-x-4">
+              <label className="cursor-pointer flex-1" onClick={() => handleToggleSize(size)}>
+                <input
+                  type="checkbox"
+                  checked={selectedSizes.some((s) => s.size === size)}
+                  onChange={() => handleToggleSize(size)}  // Ajout du gestionnaire d'événements
+                  className="form-checkbox mr-2"
+                />
 
-          {selectedSizes.some((s) => s.size === size) && (
-            <div className="flex space-x-4 flex-1">
-          <input
-            type="number"
-            placeholder="Quantité"
-            min="3"
-            value={selectedSizes.find((s) => s.size === size)?.stock || ''}
-            onChange={(e) => handleSizeDetailsChange(size, 'stock', Number(e.target.value))}
-            className="form-input w-full p-2 rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-          />
-          <input
-            type="number"
-            placeholder="Prix"
-            min="1"
-            value={selectedSizes.find((s) => s.size === size)?.price || ''}
-            onChange={(e) => handleSizeDetailsChange(size, 'price', Number(e.target.value))}
-            className="form-input w-full p-2 rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-          />
+                <span className="text-gray-700">{description}</span>
+              </label>
+
+              {selectedSizes.some((s) => s.size === size) && (
+                <div className="flex space-x-4 flex-1">
+                  <input
+                    type="number"
+                    placeholder="Quantité"
+                    min="3"
+                    value={selectedSizes.find((s) => s.size === size)?.stock || ''}
+                    onChange={(e) => handleSizeDetailsChange(size, 'stock', Number(e.target.value))}
+                    className="form-input w-full p-2 rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Prix"
+                    min="1"
+                    value={selectedSizes.find((s) => s.size === size)?.price || ''}
+                    onChange={(e) => handleSizeDetailsChange(size, 'price', Number(e.target.value))}
+                    className="form-input w-full p-2 rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              )}
             </div>
-          )}
-        </div>
           ))}
         </div>
         {errors.sizes && <p className="text-red-500 mt-1">{String(errors.sizes.message)}</p>}
       </div>
 
-      {/* Upload d'images */}
+      {/* Gestion des images (6 cases maximum) */}
+
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700">Images</label>
-        <input
-          type="file"
-          multiple
-          onChange={handleImageUpload}
-          className="form-input mt-2 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-        />
+        <label className="block text-sm font-medium text-gray-700">Images (maximum 6)</label>
+        <div className="grid grid-cols-3 gap-4 mt-4">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="relative border-2 border-dashed border-gray-400 rounded-lg p-2 w-full h-40 flex items-center justify-center">
+              {uploadedImages[index] instanceof File ? (
+                <>
+                  <img
+                    src={URL.createObjectURL(uploadedImages[index] as File)}
+                    alt={`Image ${index + 1}`}
+                    className="object-cover w-full h-full"
+                  />
+                  <button
+                    type="button"
+                    className="absolute top-2 right-2 bg-white text-red-500 rounded-full p-1"
+                    onClick={() => handleRemoveImage(index)}
+                  >
+                    ✕
+                  </button>
+                </>
+              ) : uploadedImages[index] && (uploadedImages[index] as { link: string }).link ? (
+                <>
+                  <img
+                    src={(uploadedImages[index] as { link: string }).link}
+                    alt={`Image ${index + 1}`}
+                    className="object-cover w-full h-full"
+                  />
+                  <button
+                    type="button"
+                    className="absolute top-2 right-2 bg-white text-red-500 rounded-full p-1"
+                    onClick={() => handleRemoveImage(index)}
+                  >
+                    ✕
+                  </button>
+                </>
+              ) : (
+                <div
+                  className="flex flex-col items-center justify-center text-gray-500 cursor-pointer w-full h-full"
+                  onClick={() => {
+                    const inputElement = document.getElementById(`upload-image-${index}`);
+                    if (inputElement) {
+                      inputElement.click();
+                    }
+                  }}
+                >
+                  <span>{`Image ${index + 1}`}</span>
+                  <input
+                    type="file"
+                    id={`upload-image-${index}`} 
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => handleImageChange(index, e.target.files?.[0] || null)}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
         {errors.images && <p className="text-red-500 mt-1">{String(errors.images.message)}</p>}
       </div>
 
-      {/* Liste des images triables */}
-      {uploadedImages.length > 0 && (
-        <div className="mb-8">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Réorganiser les images</label>
-          <div className="grid grid-cols-3 gap-4" ref={imageContainerRef}>
-            {uploadedImages.map((image, index) => (
-              <div key={index} className="p-2">
-                <img src={URL.createObjectURL(image)} alt={`uploaded-${index}`} className="h-40 w-40 object-cover border rounded-md" />
-                <p className="text-center mt-2 text-gray-700">Image {index + 1}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <Button disabled={isLoading} type="submit" className="w-full py-3 bg-indigo-600 text-white hover:bg-white hover:border-indigo-600 hover:text-indigo-600 transition-all duration-300">
-        {isLoading ? <CircularProgress size={20} /> : 'Upload'}
+        {isLoading ? <CircularProgress size={20} /> : editId ? 'Mettre à jour' : 'Upload'}
       </Button>
 
       {error && <p className="text-red-500 mt-4">{error}</p>}

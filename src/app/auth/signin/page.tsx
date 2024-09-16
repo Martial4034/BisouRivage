@@ -121,20 +121,23 @@ export default function Signin() {
 
   return (
     <>
-      <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-sm">
-          <img
-            className="mx-auto h-10 w-auto"
-            src="https://tailwindui.com/img/logos/mark.svg?color=indigo&shade=500"
-            alt="Your Company"
-          />
-          <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-white">
-            Sign in to your account
-          </h2>
-          <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <div className="w-full max-w-md px-6 py-12 bg-white text-black shadow-lg rounded-lg">
+          <div className="sm:mx-auto sm:w-full sm:max-w-md">
+            <img
+              className="mx-auto h-20 w-auto mb-8" // Larger logo with extra margin on bottom
+              src="/logo.svg" // Your custom SVG logo
+              alt="Your Company Logo"
+            />
+            <h2 className="mt-4 text-center text-3xl font-bold tracking-tight text-black">
+              Sign in to your account
+            </h2>
+          </div>
+
+          <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
             <div className="space-y-6">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium leading-6 text-white">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                   Email address
                 </label>
                 <div className="mt-2">
@@ -143,23 +146,26 @@ export default function Signin() {
                     name="email"
                     type="email"
                     autoComplete="email"
+                    value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="block w-full rounded-md border-0 bg-white/5 py-1.5 text-white shadow-sm ring-1 ring-inset ring-white/10 focus:ring-2 focus:ring-inset focus:ring-indigo-500 sm:text-sm sm:leading-6"
+                    className="block w-full rounded-md bg-black/5 text-black py-2 px-3 shadow-sm focus:ring-2 focus:ring-black focus:border-black placeholder-gray-400 sm:text-sm"
+                    placeholder="Enter your email"
                   />
                 </div>
               </div>
+
               <div>
                 <button
-                  disabled={!email || isButtonDisabled}
+                  disabled={isButtonDisabled}
                   onClick={signIn}
-                  className={`disabled:opacity-40 flex w-full justify-center rounded-md bg-indigo-500 px-3 py-1.5 text-sm font-semibold leading-6 text-white shadow-sm hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 ${
-                    isButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
+                  className={`w-full flex justify-center rounded-md bg-black py-2 text-sm font-semibold text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-black focus:ring-opacity-50 transition duration-150 ease-in-out ${isButtonDisabled ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
                 >
-                  {isLoading ? <CircularProgress size={20} color="inherit" /> : 'Sign In'}
+                  {isLoading ? <CircularProgress size={20} color="inherit" /> : "Sign In"}
                 </button>
               </div>
+
               {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
               {success && <p className="mt-2 text-sm text-green-600">{success}</p>}
             </div>

@@ -98,27 +98,27 @@ const Cart = () => {
             </div>
           </>
         ) : (
-          <div className='flex h-full flex-col items-center justify-center space-y-1'>
+            <div className='flex h-full flex-col items-center justify-center space-y-1'>
             <div
               aria-hidden='true'
-              className='relative mb-4 h-60 w-60 text-muted-foreground'
+              className='relative mb-4 h-80 w-80 flex items-center justify-center text-muted-foreground'
             >
-              <ShoppingCart />
+              <ShoppingCart size={175} strokeWidth={1}/>
             </div>
             <div className='text-xl font-semibold'>Votre panier est vide</div>
             <SheetTrigger asChild>
               <Link
-                href='/products'
-                className={buttonVariants({
-                  variant: 'link',
-                  size: 'sm',
-                  className: 'text-sm text-muted-foreground',
-                })}
+              href='/products'
+              className={buttonVariants({
+                variant: 'link',
+                size: 'sm',
+                className: 'text-sm text-muted-foreground',
+              })}
               >
-                Ajouter des articles au panier pour commander
+              Ajouter des articles au panier pour commander
               </Link>
             </SheetTrigger>
-          </div>
+            </div>
         )}
       </SheetContent>
     </Sheet>
