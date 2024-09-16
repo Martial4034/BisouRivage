@@ -6,7 +6,7 @@ import * as z from 'zod';
 import { Button } from '@/app/components/ui/button';
 import { useState, useEffect } from 'react';
 import { CircularProgress } from '@mui/material';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { fetchData } from "@/app/lib/fetchData";
 
 // Schéma de validation
@@ -38,7 +38,6 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
   const { data: session } = useSession();
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const searchParams = useSearchParams();
   
   const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm({
     resolver: zodResolver(schema),
