@@ -22,21 +22,27 @@ export default function SigninConfirm() {
 
   useEffect(() => {
     const handleSignIn = async () => {
-      if (isSignInWithEmailLink(auth, window.location.href)) {
-        let email = window.localStorage.getItem('emailForSignIn');
-        let redirectUrl = window.localStorage.getItem('redirectUrl');
+      const urlParams = new URLSearchParams(window.location.search);
+      let email = urlParams.get('email'); // Récupérer l'email depuis l'URL
 
+      if (isSignInWithEmailLink(auth, window.location.href)) {
+        // Si l'email n'est pas dans l'URL, on peut vérifier dans le stockage local
         if (!email) {
-          setError('No email found in local storage. Please try signing in again.');
-          setLoading(false);
-          return;
+          const storedEmail = window.localStorage.getItem('emailForSignIn');
+          if (storedEmail) {
+            email = storedEmail;
+          } else {
+            setError('No email found. Please try signing in again.');
+            setLoading(false);
+            return;
+          }
         }
 
         try {
           const result = await signInWithEmailLink(auth, email, window.location.href);
-          await signIn('credentials', { user: JSON.stringify(result.user), redirect: true, callbackUrl: redirectUrl || '/' });
+          await signIn('credentials', { user: JSON.stringify(result.user), redirect: true });
         } catch (error) {
-          console.log(error);
+          console.error('Error signing in with email link:', error);
           setError('Failed to sign in with email link. Please try again.');
           setLoading(false);
         }

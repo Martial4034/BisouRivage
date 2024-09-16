@@ -95,7 +95,19 @@ export function TopNavBar() {
         {/* User avatar or login button */}
         <DropdownMenu>
           <DropdownMenuTrigger>
-            <Button variant="ghost" size="icon" className="rounded-full">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+              onClick={() => {
+                if (!session) {
+                  if (pathname !== null) {
+                    window.localStorage.setItem('redirectUrl', pathname);
+                  }
+                  router.push('/auth/signin');
+                }
+              }}
+            >
               {session ? (
                 <Avatar className="h-8 w-8">
                   <AvatarImage src="/placeholder-user.jpg" />
@@ -109,6 +121,7 @@ export function TopNavBar() {
               <span className="sr-only">Toggle user menu</span>
             </Button>
           </DropdownMenuTrigger>
+
           {session && (
             <DropdownMenuContent align="center">
               <div className="flex items-center gap-2 p-2">
@@ -146,6 +159,7 @@ export function TopNavBar() {
             </DropdownMenuContent>
           )}
         </DropdownMenu>
+
       </div>
 
       {/* Mobile responsive menu */}
@@ -157,7 +171,7 @@ export function TopNavBar() {
               <Avatar className="h-8 w-8">
                 <AvatarImage src="/placeholder-user.jpg" />
                 <AvatarFallback>
-                  {user?.email ? getInitialsFromEmail(user.email) : 'FR'}
+                  {user?.email ? getInitialsFromEmail(user.email) : ''}
                 </AvatarFallback>
               </Avatar>
             </DropdownMenuTrigger>
