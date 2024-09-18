@@ -10,12 +10,14 @@ interface Order {
   id: string;
   deliveryDate: string;
   products: { name: string; quantity: number; price: number }[];
+  totalAmount: number;
 }
 
 export default function SuccessPageClient({ sessionId }: { sessionId?: string }) {
   const router = useRouter();
   const { data: session } = useSession();
   const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -32,21 +34,30 @@ export default function SuccessPageClient({ sessionId }: { sessionId?: string })
         if (response.ok) {
           setOrder(data.order);
         } else {
+          console.error('Error fetching order:', data);
           router.push('/checkout');
         }
       } catch (error) {
         console.error('Error fetching order:', error);
         router.push('/checkout');
+      } finally {
+        setLoading(false);
       }
     };
 
     if (sessionId && session?.user) {
       fetchOrder();
+    } else {
+      router.push('/checkout');
     }
   }, [sessionId, session, router]);
 
-  if (!order) {
+  if (loading) {
     return <CustomLoader />;
+  }
+
+  if (!order) {
+    return <p>Commande introuvable.</p>;
   }
 
   return (
@@ -66,6 +77,7 @@ export default function SuccessPageClient({ sessionId }: { sessionId?: string })
           </li>
         ))}
       </ul>
+      <p>Total de la commande : {order.totalAmount} €</p>
     </div>
   );
 }
