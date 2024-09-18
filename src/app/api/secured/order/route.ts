@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'; // Chemin mis à jour
+import { authOptions } from '@/lib/authOptions';
 import { firestoreAdmin, FieldValue } from '@/app/firebaseAdmin'; // Firebase Admin pour interagir avec la base de données
 import Stripe from 'stripe';
 import { Resend } from 'resend';
