@@ -2,7 +2,7 @@ import { useCart } from '@/app/hooks/use-cart';
 import { formatPrice } from '@/app/lib/utils';
 import Image from 'next/image';
 
-const CartItem = ({ product }: { product: { id: string, name: string, price: number, image: string, format: string, quantity: number, stock: number, artist: string } }) => {
+const CartItem = ({ product }: { product: { id: string, name: string, price: number, image: string, format: string, quantity: number, stock: number, artisteName: string } }) => {
   const { removeItem } = useCart();
 
   return (
@@ -11,7 +11,7 @@ const CartItem = ({ product }: { product: { id: string, name: string, price: num
       <div className='flex-1'>
         <h4>{product.name}</h4>
         <p>Format : {product.format}</p>
-        <p>Artiste : {product.artist}</p>
+        <p>Artiste : {product.artisteName}</p>
         <p>{formatPrice(product.price)} x {product.quantity}</p>
         <p>En stock : {product.stock}</p> {/* Afficher le stock */}
       </div>

@@ -8,15 +8,36 @@ import { Check, Loader2, X } from 'lucide-react';
 import { formatPrice } from '@/app/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { useToast } from "@/app/hooks/use-toast";
+import { CustomAlertDialog } from '@/app/components/ui/CustomAlertDialog';
 
 const CheckoutPage = () => {
+  const { data: session, status } = useSession();
   const { items, removeItem, updateQuantity, clearCart } = useCart();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast(); // Hook pour les notifications
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { toast } = useToast(); 
+
+  useEffect(() => {
+    // Vérifier si la notification d'annulation est dans localStorage
+    const isCancelled = window.localStorage.getItem('checkoutCancelled');
+
+    if (isCancelled) {
+      // Afficher la notification toast si le paiement a été annulé
+      toast({
+        title: 'Annulation du paiement',
+        description: "Votre paiement a été annulé. Veuillez réessayer.",
+        variant: 'destructive',
+      });
+
+      // Retirer l'indicateur du localStorage après affichage
+      window.localStorage.removeItem('checkoutCancelled');
+    }
+  }, [toast]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -81,7 +102,13 @@ const CheckoutPage = () => {
   // Fonction de gestion du paiement (avec vérification supplémentaire avant Stripe)
   const handleCheckout = async () => {
     setIsLoading(true);
-  
+    
+    if (status !== 'authenticated') {
+      setIsModalOpen(true); 
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch('/api/secured/checkout', {
         method: 'POST',
@@ -92,15 +119,15 @@ const CheckoutPage = () => {
           cartItems: items, // Envoyer les produits au backend pour vérification et création de la session Stripe
         }),
       });
-  
+
       const { url, error } = await response.json();
-  
+
       if (error) {
         setError(error);
         setIsLoading(false);
         return;
       }
-  
+
       if (url) {
         window.location.href = url; // Rediriger vers Stripe Checkout
       }
@@ -109,15 +136,20 @@ const CheckoutPage = () => {
       setIsLoading(false);
     }
   };
-  
-  
 
+  const handleClose = () => {
+    setIsModalOpen(false);
+  };
+
+  const redirectToSignIn = () => {
+    router.push('/auth/signin');
+  };
 
   if (items.length === 0) {
     return (
       <div className="text-center mt-20">
         <h2 className="text-2xl">Votre panier est vide</h2>
-        <Link href="/products">
+        <Link href="/">
           <Button className="mt-4">Voir les produits</Button>
         </Link>
       </div>
@@ -153,13 +185,13 @@ const CheckoutPage = () => {
                         <div>
                           <h3 className="text-sm">
                             <Link
-                              href={`/product/${item.id}`}
+                              href={`/sales/${item.id}`}
                               className="font-medium text-gray-700 hover:text-gray-800"
                             >
                               {item.id} ({item.format})
                             </Link>
                           </h3>
-                          <p className="text-sm mt-1">Artiste : {item.artist}</p>
+                          <p className="text-sm mt-1">Artiste : {item.artisteName}</p>
                           <p className="mt-1 text-sm font-medium text-gray-900">
                             {formatPrice(item.price)} x {item.quantity}
                           </p>
@@ -178,7 +210,7 @@ const CheckoutPage = () => {
                         </div>
                       </div>
 
-                      <div className="mt-4 flex space-x-2">
+                      <div className="mt-4 flex items-center space-x-2">
                         <Button
                           variant="outline"
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
@@ -186,7 +218,7 @@ const CheckoutPage = () => {
                         >
                           -
                         </Button>
-                        <span>{item.quantity}</span>
+                        <span className="text-center">{item.quantity}</span> {/* Ajoutez 'text-center' pour centrer le nombre dans son espace */}
                         <Button
                           variant="outline"
                           onClick={() => updateQuantity(item.id, item.quantity + 1)}
@@ -195,6 +227,7 @@ const CheckoutPage = () => {
                           +
                         </Button>
                       </div>
+
                     </div>
                   </li>
                 ))}
@@ -231,6 +264,14 @@ const CheckoutPage = () => {
           </section>
         </div>
       </div>
+      <CustomAlertDialog
+        isOpen={isModalOpen}
+        onClose={handleClose}
+        title="Connexion requise"
+        description="Vous devez être connecté pour procéder au paiement. Veuillez vous connecter ou vous inscrire."
+        actionText="Se connecter"
+        onActionClick={redirectToSignIn}
+      />
     </div>
   );
 };

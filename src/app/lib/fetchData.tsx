@@ -7,7 +7,7 @@ interface ImageData {
   description: string;
   sizes: { size: string; price: number; stock: number }[];
   images: { link: string }[];
-  artist: string;
+  artisteName: string;
   email: string;
 }
 

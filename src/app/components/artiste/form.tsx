@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { CircularProgress } from '@mui/material';
 import { useRouter } from 'next/navigation';
 import { fetchData } from "@/app/lib/fetchData";
+import { useUser } from '@/app/hooks/useUser';
 
 // Schéma de validation
 const schema = z.object({
@@ -35,14 +36,17 @@ interface ArtisteFormContentProps {
 }
 
 export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) {
+
   const { data: session } = useSession();
+  const { user } = useUser();
+  console.log(user?.artiste_name);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   
   const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm({
     resolver: zodResolver(schema),
   });
-
+  
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
@@ -149,6 +153,7 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
 
       const formData = new FormData();
       formData.append('description', data.description);
+      formData.append('artiste_name', user?.artiste_name || '');
       formData.append('format', data.format);
       formData.append('sizes', JSON.stringify(selectedSizes));
 

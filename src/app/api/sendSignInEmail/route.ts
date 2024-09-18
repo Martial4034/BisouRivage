@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { authAdmin, firestoreAdmin, FieldValue } from '@/app/firebaseAdmin';
-import { SignUpEmailTemplate, SignInEmailTemplate } from '@/app/components/EmailTemplates';
+import { SignUpEmailTemplate, SignInEmailTemplate } from '@/app/components/email/AuthEmailTemplates';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

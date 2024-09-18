@@ -1,55 +1,75 @@
+// middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
 export async function middleware(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const token = await getToken({ req });
+  const url = req.nextUrl.clone();
+  const pathname = req.nextUrl.pathname;
+  const isApiRoute = pathname.startsWith('/api/');
 
-  const url = req.nextUrl.clone(); // Clone de l'URL actuelle
-
-  // Pages réservées aux artistes uniquement
-  const artistProtectedPaths = ['/dashboard/artiste', '/api/artiste'];
-
-  // Vérification si l'utilisateur accède à une page réservée aux artistes
-  if (artistProtectedPaths.some((path) => req.nextUrl.pathname.startsWith(path))) {
+  // Routes nécessitant le rôle 'artiste'
+  if (
+    pathname.startsWith('/dashboard/artiste') ||
+    pathname.startsWith('/api/artiste')
+  ) {
     if (!token) {
-      // Redirige vers la page de connexion si l'utilisateur n'est pas connecté
-      url.pathname = '/auth/signin';
-
-      // Ajouter le redirectUrl uniquement pour les artistes
-      if (req.nextUrl.pathname === '/dashboard/artiste') {
-        url.searchParams.set('redirectUrl', '/dashboard/artiste');
+      if (isApiRoute) {
+        return new NextResponse(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { 'Content-Type': 'application/json' } }
+        );
+      } else {
+        url.pathname = '/auth/signin';
+        url.searchParams.set('redirectUrl', pathname);
+        return NextResponse.redirect(url);
       }
-      return NextResponse.redirect(url);
     } else if (token.role !== 'artiste') {
-      // Redirige si l'utilisateur n'est pas un artiste
-      url.pathname = '/';
-      return NextResponse.redirect(url);
+      if (isApiRoute) {
+        return new NextResponse(
+          JSON.stringify({ error: 'Forbidden' }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } }
+        );
+      } else {
+        url.pathname = '/';
+        return NextResponse.redirect(url);
+      }
     }
   }
-
-  // Pages nécessitant simplement une authentification (non spécifique aux artistes)
-  const protectedPaths = ['/profile', '/dashboard'];
-
-  // Si l'utilisateur accède à une page protégée
-  if (protectedPaths.some((path) => req.nextUrl.pathname.startsWith(path))) {
+  // Routes nécessitant simplement une authentification
+  else if (
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/api/secured') ||
+    pathname.startsWith('/checkout/success') ||
+    pathname.startsWith('/checkout/cancel')
+  ) {
     if (!token) {
-      // Si non connecté, redirige vers /auth/signin avec un paramètre redirectUrl
-      url.pathname = '/auth/signin';
-      url.searchParams.set('redirectUrl', req.nextUrl.pathname);
-      return NextResponse.redirect(url);
+      if (isApiRoute) {
+        return new NextResponse(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { 'Content-Type': 'application/json' } }
+        );
+      } else {
+        url.pathname = '/auth/signin';
+        url.searchParams.set('redirectUrl', pathname);
+        return NextResponse.redirect(url);
+      }
     }
   }
 
-  // Continue la requête si les conditions sont remplies
+  // Continuer la requête si les conditions sont remplies
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    '/profile', // Page utilisateur protégée
-    '/dashboard', // Pages dashboard générales
-    '/dashboard/artiste', // Page protégée pour les artistes
-    '/api/artiste/:path*', // API pour les artistes
+    '/profile',
+    '/dashboard/:path*',
+    '/api/secured/:path*',
+    '/api/artiste/:path*',
+    '/checkout/success',
+    '/checkout/cancel',
   ],
 };

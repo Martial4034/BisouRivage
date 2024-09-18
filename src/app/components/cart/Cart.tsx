@@ -63,7 +63,7 @@ const Cart = () => {
                       format: item.format,
                       quantity: item.quantity,
                       stock: item.stock,
-                      artist: item.artist
+                      artisteName: item.artisteName
                     }} // Passer les bonnes propriétés à CartItem
                     key={item.id}
                   />

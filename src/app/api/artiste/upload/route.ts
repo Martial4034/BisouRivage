@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const formData = await req.formData();
+    const artisteName = formData.get("artiste_name") as string;
     const description = formData.get("description") as string;
     const format = formData.get("format") as string;
     const sizes = JSON.parse(formData.get("sizes") as string); // Récupérer les tailles avec stock et prix
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
     const newUploadRef = firestoreAdmin.collection("uploads").doc(docId);
     await newUploadRef.set({
       email: token.email,
+      artisteName,
       format,
       description,
       sizes: cleanedSizes,

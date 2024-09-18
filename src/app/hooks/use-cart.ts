@@ -10,7 +10,7 @@ interface CartItem {
   format: string;
   quantity: number;
   stock: number;
-  artist: string;
+  artisteName: string;
 }
 
 interface CartState {

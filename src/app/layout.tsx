@@ -2,7 +2,7 @@ import { TopNavBar } from './components/TopNavBar';
 import './globals.css';
 import SessionProvider from './SessionProvider';
 import ClientWrapper from './ClientWrapper';
-import { ToastProvider, ToastViewport } from './components/ui/toast'; // Ajout du ToastProvider et ToastViewport
+import { Toaster } from "@/app/components/ui/toaster";
 
 export default function RootLayout({
   children,
@@ -15,10 +15,8 @@ export default function RootLayout({
         <SessionProvider>
           <ClientWrapper>
             <TopNavBar />
-            <ToastProvider> {/* Envelopper avec ToastProvider */}
               {children}
-              <ToastViewport /> {/* Ajouter le Viewport pour afficher les toasts */}
-            </ToastProvider>
+              <Toaster />
           </ClientWrapper>
         </SessionProvider>
       </body>

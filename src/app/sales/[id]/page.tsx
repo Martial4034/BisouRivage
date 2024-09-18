@@ -10,7 +10,7 @@ interface ImageData {
   description: string;
   sizes: { size: string; price: number; stock: number }[];
   images: { link: string }[];
-  artist: string;
+  artisteName: string;
 }
 
 export default function ImageDetails({ params }: { params: { id: string } }) {
@@ -55,10 +55,11 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
       price: selectedPrice, // Prix en fonction du format sélectionné
       image: imageData.images[0]?.link || '', // L'image principale
       format: selectedSize, // Le format sélectionné
-      quantity: 1, // Par défaut, une unité
+      quantity: 1,
       stock: selectedFormat?.stock || 0, // Ajouter la quantité disponible
-      artist: imageData.artist || 'Unknown artist', // Ajouter le nom de l'artiste (si disponible)
+      artisteName: imageData.artisteName, 
     };
+    console.log('Adding to cart:', product);
 
     addItem(product); // Ajouter l'article au panier
     setIsAdded(true); // Mettre à jour l'état pour indiquer que l'article a été ajouté

@@ -1,3 +1,5 @@
+// src/app/api/auth/[...nextauth]/route.ts
+
 import NextAuth, { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { getUserRole } from '@/app/firebaseAdmin';
@@ -39,4 +41,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
 };
-export default NextAuth(authOptions);
+
+const handler = NextAuth(authOptions);
+
+export { handler as GET, handler as POST };

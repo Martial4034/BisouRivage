@@ -1,4 +1,3 @@
-// src/app/hooks/useUser.ts
 import { useEffect, useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 
