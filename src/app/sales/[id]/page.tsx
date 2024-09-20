@@ -46,24 +46,26 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
       console.error('Please select a format first.');
       return;
     }
-
+  
     const selectedFormat = imageData.sizes.find((size) => size.size === selectedSize);
-
+  
     const product = {
       id: params.id,
       name: `Image ${params.id}`,
-      price: selectedPrice, // Prix en fonction du format sélectionné
-      image: imageData.images[0]?.link || '', // L'image principale
-      format: selectedSize, // Le format sélectionné
+      price: selectedPrice,
+      image: imageData.images[0]?.link || '',
+      format: selectedSize,
       quantity: 1,
-      stock: selectedFormat?.stock || 0, // Ajouter la quantité disponible
-      artisteName: imageData.artisteName, 
+      stock: selectedFormat?.stock || 0,
+      artisteName: imageData.artisteName,
     };
+  
     console.log('Adding to cart:', product);
-
-    addItem(product); // Ajouter l'article au panier
-    setIsAdded(true); // Mettre à jour l'état pour indiquer que l'article a été ajouté
+  
+    addItem(product);
+    setIsAdded(true);
   };
+  
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -102,6 +104,7 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
                   onClick={() => {
                     setSelectedSize(size.size);
                     setSelectedPrice(size.price);
+                    setIsAdded(false);
                   }}
                   disabled={size.stock <= 0}
                   className={`px-4 py-2 border rounded ${size.stock <= 0 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : selectedSize === size.size ? 'bg-blue-500 text-white' : 'bg-white text-black'}`}

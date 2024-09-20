@@ -14,13 +14,14 @@ import { CustomAlertDialog } from '@/app/components/ui/CustomAlertDialog';
 
 const CheckoutPage = () => {
   const { data: session, status } = useSession();
-  const { items, removeItem, updateQuantity, clearCart } = useCart();
+  const { items, removeItem, updateQuantity, updatePrice, clearCart } = useCart();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { toast } = useToast(); 
+  const { toast } = useToast();
+  const [cartTotal, setCartTotal] = useState(0);
 
   useEffect(() => {
     // Vérifier si la notification d'annulation est dans localStorage
@@ -44,6 +45,15 @@ const CheckoutPage = () => {
     console.log("Vérification du panier...");
     verifyCart(); // Vérifier les produits du panier dès l'arrivée sur la page
   }, []);
+
+  const fee = 10; 
+  useEffect(() => {
+    const total = items.reduce(
+      (total, item) => total + item.price * item.quantity,
+      0
+    );
+    setCartTotal(total + fee);
+  }, [items]);
 
   // Fonction pour vérifier les éléments du panier
   const verifyCart = async () => {
@@ -73,12 +83,11 @@ const CheckoutPage = () => {
 
           // Ajuster les éléments du panier en fonction des modifications
           if (update.status === 'quantity_adjusted') {
-            updateQuantity(update.id, update.newQuantity);
+            updateQuantity(update.id, update.format, update.newQuantity);
           } else if (update.status === 'price_changed') {
-            // TODO: Mettre à jour les prix si nécessaire
-            console.log("Prix changé pour:", update.id);
+            updatePrice(update.id, update.format, update.newPrice);
           } else if (update.status === 'removed') {
-            removeItem(update.id); // Retirer les éléments qui ne sont plus disponibles
+            removeItem(update.id, update.format); // Retirer les éléments qui ne sont plus disponibles
           }
         });
       }
@@ -92,31 +101,49 @@ const CheckoutPage = () => {
     }
   };
 
-  // Calcul du total du panier
-  const cartTotal = items.reduce(
-    (total, item) => total + item.price * item.quantity,
-    0
-  );
-  const fee = 10; // Exemples de frais de transaction
-
-  // Fonction de gestion du paiement (avec vérification supplémentaire avant Stripe)
   const handleCheckout = async () => {
     setIsLoading(true);
-    
+
     if (status !== 'authenticated') {
-      setIsModalOpen(true); 
+      setIsModalOpen(true);
       setIsLoading(false);
       return;
     }
 
     try {
+      // Vérifier le panier avant de procéder
+      await verifyCart();
+
+      // Obtenir les items mis à jour après la vérification
+      const updatedItems = useCart.getState().items;
+      console.log('Items après vérification:', updatedItems);
+
+      // Vérifier si le panier est vide après la vérification
+      if (updatedItems.length === 0) {
+        toast({
+          title: 'Panier vide',
+          description: 'Votre panier est vide après la vérification. Veuillez ajouter des produits avant de procéder au paiement.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Recalculer le total du panier
+      const updatedCartTotal = updatedItems.reduce(
+        (total, item) => total + item.price * item.quantity,
+        0
+      );
+      setCartTotal(updatedCartTotal);
+
+      // Procéder à la création de la session Stripe avec les items mis à jour
       const response = await fetch('/api/secured/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          cartItems: items, // Envoyer les produits au backend pour vérification et création de la session Stripe
+          cartItems: updatedItems, // Utiliser les produits mis à jour
         }),
       });
 
@@ -130,8 +157,12 @@ const CheckoutPage = () => {
 
       if (url) {
         window.location.href = url; // Rediriger vers Stripe Checkout
+      } else {
+        // Si aucune URL n'est retournée, arrêter le loader
+        setIsLoading(false);
       }
     } catch (err) {
+      console.error("Erreur lors du checkout:", err);
       setError('Erreur lors de la création de la session Stripe');
       setIsLoading(false);
     }
@@ -169,7 +200,7 @@ const CheckoutPage = () => {
             <ul className="divide-y divide-gray-200 border-b border-t border-gray-200">
               {isMounted &&
                 items.map((item) => (
-                  <li key={item.id} className="flex py-6 sm:py-10">
+                  <li key={`${item.id}-${item.format}`} className="flex py-6 sm:py-10">
                     <div className="flex-shrink-0">
                       <Image
                         src={item.image}
@@ -188,7 +219,7 @@ const CheckoutPage = () => {
                               href={`/sales/${item.id}`}
                               className="font-medium text-gray-700 hover:text-gray-800"
                             >
-                              {item.id} ({item.format})
+                              {item.name} ({item.format})
                             </Link>
                           </h3>
                           <p className="text-sm mt-1">Artiste : {item.artisteName}</p>
@@ -201,7 +232,7 @@ const CheckoutPage = () => {
                           <div className="absolute right-0 top-0">
                             <Button
                               aria-label="remove product"
-                              onClick={() => removeItem(item.id)}
+                              onClick={() => removeItem(item.id, item.format)}
                               variant="ghost"
                             >
                               <X className="h-5 w-5" aria-hidden="true" />
@@ -213,15 +244,15 @@ const CheckoutPage = () => {
                       <div className="mt-4 flex items-center space-x-2">
                         <Button
                           variant="outline"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.id, item.format, item.quantity - 1)}
                           disabled={item.quantity <= 1}
                         >
                           -
                         </Button>
-                        <span className="text-center">{item.quantity}</span> {/* Ajoutez 'text-center' pour centrer le nombre dans son espace */}
+                        <span className="text-center">{item.quantity}</span>
                         <Button
                           variant="outline"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.id, item.format, item.quantity + 1)}
                           disabled={item.quantity >= item.stock}
                         >
                           +
@@ -248,7 +279,7 @@ const CheckoutPage = () => {
               </div>
               <div className="flex items-center justify-between font-medium text-gray-900">
                 <p className="text-base">Total</p>
-                <p className="text-base">{formatPrice(cartTotal + fee)}</p>
+                <p className="text-base">{formatPrice(cartTotal)}</p>
               </div>
             </div>
 
@@ -257,7 +288,7 @@ const CheckoutPage = () => {
             <Button
               className="w-full mt-6"
               onClick={handleCheckout}
-              disabled={isLoading}
+              disabled={isLoading || items.length === 0}
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Payer'}
             </Button>

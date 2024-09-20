@@ -1,18 +1,18 @@
 import * as React from 'react';
 
 interface Product {
-  name: string;
-  quantity: number;
+  productId: string;
   price: number;
-  format: string;
-  artisteName: string;
+  quantity: number;
   imageUrl: string;
+  artisteName: string;
+  name: string;
+  format: string;
 }
 
 interface OrderSummaryEmailTemplateProps {
-  email: string;
-  orderId: string;
-  deliveryDate: string; // Format de la date
+  userEmail: string;
+  deliveryDate: string;
   products: Product[];
   totalAmount: number;
 }
@@ -64,13 +64,23 @@ const tableCellStyle = {
   padding: "8px 0",
   fontSize: "14px",
   borderBottom: "1px solid #eaeaea",
+  verticalAlign: "top" as const,
+};
+
+const productCellStyle = {
+  display: "flex",
+  alignItems: "flex-start",
+};
+
+const productDetailsStyle = {
+  marginLeft: "10px",
 };
 
 const imageStyle = {
   width: "100px",
   height: "auto",
   objectFit: "cover" as const,
-  marginBottom: "8px",
+  flexShrink: 0,
 };
 
 const footerStyle = {
@@ -79,7 +89,12 @@ const footerStyle = {
   marginTop: "24px",
 };
 
-export const OrderSummaryEmailTemplate: React.FC<Readonly<OrderSummaryEmailTemplateProps>> = ({ email, orderId, deliveryDate, products, totalAmount }) => (
+export const OrderSummaryEmailTemplate: React.FC<Readonly<OrderSummaryEmailTemplateProps>> = ({
+  userEmail,
+  deliveryDate,
+  products,
+  totalAmount,
+}) => (
   <html lang="fr">
     <head>
       <meta httpEquiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -87,10 +102,15 @@ export const OrderSummaryEmailTemplate: React.FC<Readonly<OrderSummaryEmailTempl
       <title>Récapitulatif de commande - Bisourivage</title>
     </head>
     <body style={containerStyle}>
-      <img src="https://bisourivage.fr/logo.svg" alt="Bisourivage Logo" style={{ width: "100px", marginBottom: "24px" }} />
+      <img
+        src="https://bisourivage.fr/logo.svg"
+        alt="Bisourivage Logo"
+        style={{ width: "100px", marginBottom: "24px" }}
+      />
       <h1 style={headingStyle}>Merci pour votre commande !</h1>
-      <p style={textStyle}>Commande ID : <strong>{orderId}</strong></p>
-      <p style={textStyle}>Votre commande sera livrée avant le <strong>{deliveryDate}</strong>.</p>
+      <p style={textStyle}>
+        Votre commande sera livrée avant le <strong>{deliveryDate}</strong>.
+      </p>
 
       <table style={productTableStyle}>
         <thead>
@@ -103,11 +123,13 @@ export const OrderSummaryEmailTemplate: React.FC<Readonly<OrderSummaryEmailTempl
         <tbody>
           {products.map((product, index) => (
             <tr key={index}>
-              <td style={tableCellStyle}>
+              <td style={{ ...tableCellStyle, ...productCellStyle }}>
                 <img src={product.imageUrl} alt={product.name} style={imageStyle} />
-                <strong>{product.name}</strong> <br />
-                Format : {product.format} <br />
-                Artiste : {product.artisteName}
+                <div style={productDetailsStyle}>
+                  <strong>{product.name}</strong> <br />
+                  Format : {product.format} <br />
+                  Artiste : {product.artisteName}
+                </div>
               </td>
               <td style={tableCellStyle}>{product.quantity}</td>
               <td style={tableCellStyle}>{product.price.toFixed(2)} €</td>
@@ -123,7 +145,7 @@ export const OrderSummaryEmailTemplate: React.FC<Readonly<OrderSummaryEmailTempl
       <p style={footerStyle}>
         Si vous avez des questions concernant votre commande, vous pouvez nous contacter à l'adresse suivante : bisourivage@gmail.com.
       </p>
-      <p style={footerStyle}>Email : {email}</p>
+      <p style={footerStyle}>Email : {userEmail}</p>
     </body>
   </html>
 );
