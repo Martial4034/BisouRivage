@@ -16,7 +16,7 @@ const CartItem = ({ product }: { product: { id: string, name: string, price: num
         <p>En stock : {product.stock}</p> {/* Afficher le stock */}
       </div>
       <button
-        onClick={() => removeItem(product.id)}
+        onClick={() => removeItem(product.id, product.format)}
         className='text-red-500'>
         Supprimer
       </button>
