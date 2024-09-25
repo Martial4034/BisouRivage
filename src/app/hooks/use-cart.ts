@@ -11,6 +11,8 @@ interface CartItem {
   quantity: number;
   stock: number;
   artisteName: string;
+  artisteEmail: string;
+  artisteId: string;
 }
 
 interface CartState {

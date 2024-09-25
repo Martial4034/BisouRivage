@@ -59,7 +59,7 @@ export const SignInEmailTemplate: React.FC<Readonly<EmailTemplateProps>> = ({ ur
       <title>Connexion Bisourivage</title>
     </head>
     <body style={containerStyle}>
-      <img src="https://bisourivage.fr/logo.svg" alt="Bisourivage Logo" style={{ width: "100px", marginBottom: "24px" }} />
+      <img src="https://bisourivage.fr/BISOU_RIVAGE_BLEU_FOND_TRANSPARENT.svg" alt="Bisourivage Logo" style={{ width: "100px", marginBottom: "24px" }} />
       <h1 style={headingStyle}>Bienvenue sur Bisourivage</h1>
       <p style={textStyle}>Merci de vous être connecté. Cliquez sur le bouton ci-dessous pour accéder à votre compte :</p>
       <a href={url} style={linkStyle}>Se connecter à mon compte</a>
@@ -78,7 +78,7 @@ export const SignUpEmailTemplate: React.FC<Readonly<EmailTemplateProps>> = ({ ur
       <title>Inscription Bisourivage</title>
     </head>
     <body style={containerStyle}>
-      <img src="https://bisourivage.fr/logo.svg" alt="Bisourivage Logo" style={{ width: "100px", marginBottom: "24px" }} />
+      <img src="https://bisourivage.fr/BISOU_RIVAGE_BLEU_FOND_TRANSPARENT.svg" alt="Bisourivage Logo" style={{ width: "100px", marginBottom: "24px" }} />
       <h1 style={headingStyle}>Bienvenue sur Bisourivage</h1>
       <p style={textStyle}>Merci pour votre inscription. Cliquez sur le bouton ci-dessous pour activer votre compte :</p>
       <a href={url} style={linkStyle}>Activer mon compte</a>

@@ -1,13 +1,7 @@
 "use client";
 
 import { ShoppingBag, User, ArrowDownToLine } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuSeparator,
-  DropdownMenuItem,
-} from "@/app/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuSeparator, DropdownMenuItem } from "@/app/components/ui/dropdown-menu";
 import { Button } from "@/app/components/ui/button";
 import Cart from "@/app/components/cart/Cart";
 import { Avatar, AvatarImage, AvatarFallback } from "@/app/components/ui/avatar";
@@ -18,8 +12,6 @@ import { useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import { usePathname } from 'next/navigation';
 import Skeleton from 'react-loading-skeleton';
-
-// Function to extract initials from email
 
 const getInitialsFromEmail = (email: string): string => {
   const [localPart] = email.split('@');
@@ -87,7 +79,7 @@ export function TopNavBar() {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <Link href="#" className="block">
+          <Link href="/dashboard/commandes" className="block">
             <ShoppingBag />
           </Link>
         )}
@@ -138,7 +130,7 @@ export function TopNavBar() {
               </DropdownMenuItem>
               {user?.role === 'artiste' && (
                 <DropdownMenuItem>
-                  <Link href="/orders" className="flex items-center gap-2" prefetch={false}>
+                  <Link href="/dashboard/commandes" className="flex items-center gap-2" prefetch={false}>
                     <div className="h-4 w-4" />
                     <span>Commandes</span>
                   </Link>
@@ -183,7 +175,7 @@ export function TopNavBar() {
               </DropdownMenuItem>
               {user?.role === 'artiste' && (
                 <DropdownMenuItem>
-                  <Link href="/orders" className="flex items-center gap-2" prefetch={false}>
+                  <Link href="/dashboard/commandes" className="flex items-center gap-2" prefetch={false}>
                     <span>Commandes</span>
                   </Link>
                 </DropdownMenuItem>

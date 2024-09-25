@@ -72,7 +72,8 @@ export async function POST(req: NextRequest) {
 
     const newUploadRef = firestoreAdmin.collection("uploads").doc(docId);
     await newUploadRef.set({
-      email: token.email,
+      artisteId: token.uid,
+      artisteEmail: token.email,
       artisteName,
       format,
       description,

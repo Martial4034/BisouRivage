@@ -19,7 +19,7 @@ import CartItem from '@/app/components/cart/CartItem';
 import { useEffect, useState } from 'react';
 
 const Cart = () => {
-  const { items } = useCart(); // Accès au hook Zustand
+  const { items } = useCart();
   const itemCount = items.length;
   const [isMounted, setIsMounted] = useState<boolean>(false);
 
@@ -32,7 +32,7 @@ const Cart = () => {
     0
   );
 
-  const fee = 10; // Exemple de frais de transaction
+  const fee = 12.5;
 
   return (
     <Sheet>
@@ -63,8 +63,10 @@ const Cart = () => {
                       format: item.format,
                       quantity: item.quantity,
                       stock: item.stock,
-                      artisteName: item.artisteName
-                    }} // Passer les bonnes propriétés à CartItem
+                      artisteName: item.artisteName,
+                      artisteEmail: item.artisteEmail,
+                      artisteId: item.artisteId,
+                    }} 
                     key={item.id}
                   />
                 ))}
@@ -108,7 +110,7 @@ const Cart = () => {
             <div className='text-xl font-semibold'>Votre panier est vide</div>
             <SheetTrigger asChild>
               <Link
-              href='/products'
+              href='/'
               className={buttonVariants({
                 variant: 'link',
                 size: 'sm',

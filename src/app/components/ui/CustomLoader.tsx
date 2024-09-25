@@ -9,7 +9,7 @@ export default function CustomLoader() {
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <img
             className="mx-auto h-20 w-auto mb-8"
-            src="/logo.svg"
+            src="/BISOU_RIVAGE_BLEU_FOND_TRANSPARENT.svg"
             alt="Your Company Logo"
           />
           <h2 className="text-center text-3xl font-bold tracking-tight text-black">

@@ -47,11 +47,11 @@ export default function SigninConfirm() {
           await signIn('credentials', { user: JSON.stringify(result.user), redirect: true });
         } catch (error) {
           console.error('Error signing in with email link:', error);
-          setError('Failed to sign in with email link. Please try again.');
+          setError('Il semblerait que nous puissions pas vous connecter. Veillez à utilisé le même navigateur que celui utilisé pour demander le lien de connexion.');
           setLoading(false);
         }
       } else {
-        setError('Invalid sign-in link. Please try signing in again.');
+        setError('Il semblerait que nous puissions pas vous connecter. Veillez à utilisé le même navigateur que celui utilisé pour demander le lien de connexion.');
         setLoading(false);
       }
     };
@@ -64,8 +64,8 @@ export default function SigninConfirm() {
       <div className="w-full max-w-md px-6 py-12 bg-white text-black shadow-lg rounded-lg">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <img
-            className="mx-auto h-20 w-auto mb-8" // Logo plus grand avec marge
-            src="/logo.svg" // Le chemin vers ton logo personnalisé
+            className="mx-auto h-20 w-auto mb-8"
+            src="/BISOU_RIVAGE_BLEU_FOND_TRANSPARENT.svg" 
             alt="Your Company Logo"
           />
           <h2 className="text-center text-3xl font-bold tracking-tight text-black">

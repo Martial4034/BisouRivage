@@ -11,6 +11,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
+      <head>
+        <title>BisouRivage</title>
+      </head>
       <body className="h-full">
         <SessionProvider>
           <ClientWrapper>

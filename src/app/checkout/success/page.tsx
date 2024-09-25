@@ -1,5 +1,3 @@
-// app/checkout/success/page.tsx
-
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/authOptions';
 import { Order } from '@/app/types';
@@ -35,9 +33,18 @@ export default async function SuccessPage() {
     deliveryDate: data.deliveryDate.toDate().toISOString(), // Convertir Timestamp en chaîne
     products: data.products,
     totalAmount: data.totalAmount,
+    shippingAddress: data.shippingAddress,
+    artistStatuses: data.artistStatuses,
+    createdAt: data.createdAt.toDate().toISOString(), // Convertir Timestamp en chaîne
+    stripeSessionId: data.stripeSessionId,
+    paymentId: data.paymentId,
+    userId: data.userId,
+    userEmail: data.userEmail,
   };
 
-  console.log('orderData', orderData);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('cart', '');
+  }
 
   return <OrderSummary order={orderData} />;
 }

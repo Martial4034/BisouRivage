@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useSession, signIn } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 
 export function useUser() {
   const { data: session, status } = useSession();
   const [user, setUser] = useState<any>(null);
 
-  const fetchUser = async (email: string) => {
+  const refreshUser = async (email: string) => {
     try {
       const response = await fetch('/api/getUser', {
         method: 'POST',
@@ -18,7 +18,6 @@ export function useUser() {
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
-        await signIn('credentials', { user: JSON.stringify(userData), redirect: false });
       } else {
         console.error('Failed to fetch user data');
       }
@@ -29,9 +28,9 @@ export function useUser() {
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.email) {
-      fetchUser(session.user.email);
+      refreshUser(session.user.email);
     }
   }, [session, status]);
 
-  return { user, isLoading: status === 'loading', fetchUser };
+  return { user, isLoading: status === 'loading', refreshUser };
 }

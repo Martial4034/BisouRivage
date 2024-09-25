@@ -9,9 +9,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  console.log('Token:', token);
-
-
   if (!token) {
     return NextResponse.json(
       { error: 'Unauthorized' },
@@ -21,7 +18,6 @@ export async function POST(req: NextRequest) {
 
   try {
     const { cartItems } = await req.json();
-
     const lineItems = [];
 
     for (const item of cartItems) {
@@ -36,14 +32,15 @@ export async function POST(req: NextRequest) {
       }
 
       const productData = productDoc.data();
-      const sizeInfo = productData?.sizes.find(
+      const sizeInfoIndex = productData?.sizes.findIndex(
         (size: any) => size.size === item.format
       );
+      const sizeInfo = productData?.sizes[sizeInfoIndex];
 
-      if (sizeInfo.stock < item.quantity) {
+      if (!sizeInfo || sizeInfo.stock < item.quantity) {
         return NextResponse.json(
           {
-            message: `Stock insuffisant pour le produit ${item.name} (${item.format}). Disponible : ${sizeInfo.stock}.`,
+            message: `Stock insuffisant pour le produit ${item.name} (${item.format}). Disponible : ${sizeInfo?.stock || 0}.`,
           },
           { status: 400 }
         );
@@ -68,9 +65,10 @@ export async function POST(req: NextRequest) {
             images: [item.image],
             metadata: {
               id: item.id,
-              formatId: item.formatId,
               imageUrl: item.image,
               artisteName: item.artisteName,
+              artisteEmail: item.artisteEmail,
+              artisteId: item.artisteId,
               format: item.format,
             },
           },
@@ -79,28 +77,47 @@ export async function POST(req: NextRequest) {
         quantity: item.quantity,
       });
     }
-    
-
-    // Utiliser 'token.email' et 'token.sub' (qui correspond à l'UID de l'utilisateur)
     const stripeSession = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
-      success_url: `${req.headers.get('origin')}/checkout/success`,
-      cancel_url: `${req.headers.get('origin')}/checkout/cancel`,
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/success`,
+      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout/cancel`,
       automatic_tax: { enabled: true },
       billing_address_collection: 'required',
       shipping_address_collection: {
         allowed_countries: ['FR'],
       },
+      shipping_options: [
+        {
+          shipping_rate_data: {
+            type: 'fixed_amount',
+            fixed_amount: {
+              amount: 1250,
+              currency: 'eur',
+            },
+            display_name: 'Frais de livraison',
+            delivery_estimate: {
+              minimum: {
+                unit: 'business_day',
+                value: 7,
+              },
+              maximum: {
+                unit: 'business_day',
+                value: 20,
+              },
+            },
+          },
+        },
+      ],
       customer_email: token.email as string,
+      phone_number_collection: {
+        enabled: true,
+      },
       metadata: {
         userId: token.uid as string,
       },
     });
-
-    console.log('stripeSession', stripeSession);
-
     return NextResponse.json(
       { url: stripeSession.url },
       { status: 200 }

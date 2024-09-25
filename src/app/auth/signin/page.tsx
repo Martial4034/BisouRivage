@@ -46,7 +46,40 @@ export default function Signin() {
     setError('');
     setSuccess('');
     try {
-      const response = await fetch('/api/checkUser', {
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+  
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message);
+  
+      if (result.userExists) {
+        // Utilisateur existant : un lien de connexion a été envoyé
+        window.localStorage.setItem('emailForSignIn', email); // Écrase l'ancienne valeur avec la nouvelle
+        setSuccess('Un lien de connexion vous a été envoyé par email.');
+      } else {
+        // Nouvel utilisateur : déclencher l'inscription
+        setIsModalOpen(true);
+      }
+    } catch (error: any) {
+      setIsLoading(false);
+      setIsButtonDisabled(false);
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+
+  const handleSignUp = async () => {
+    setIsLoading(true);
+    try {
+      // Appeler à nouveau l'API pour insérer l'utilisateur cette fois
+      await fetch('/api/auth/registerUser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -54,63 +87,11 @@ export default function Signin() {
         body: JSON.stringify({ email }),
       });
 
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message);
-
-      if (result.userExists) {
-        // Utilisateur existant
-        window.localStorage.setItem('emailForSignIn', email);
-        await sendSignInLink(email, false);
-      } else {
-        // Nouvel utilisateur
-        window.localStorage.setItem('emailForSignIn', email);
-        setIsModalOpen(true);
-        setIsLoading(false);
-      }
-    } catch (error: any) {
-      setIsLoading(false);
-      setIsButtonDisabled(false);
-      setError(error.message);
-    }
-  };
-
-  const sendSignInLink = async (email: string, isSignUp: boolean) => {
-    try {
-      const response = await fetch('/api/sendSignInEmail', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          to: email,
-          email: email,
-          isSignUp: isSignUp,
-        }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || 'Error sending email');
-
-      setSuccess('Un mail de connexion vous a été envoyé par email.');
-      setIsLoading(false);
+      setIsModalOpen(false);
+      setSuccess('Votre compte a été créé et un lien de connexion vous a été envoyé.');
       setTimer(59); // 59 seconds timer
     } catch (error: any) {
       setIsLoading(false);
-      setIsButtonDisabled(false);
-      setError(error.message);
-    }
-  };
-
-  const handleSignUp = async () => {
-    setIsLoading(true);
-    try {
-      await sendSignInLink(email, true);
-      setIsModalOpen(false);
-      setIsButtonDisabled(true);
-      setTimer(59);
-    } catch (error: any) {
-      setIsLoading(false);
-      setIsButtonDisabled(false);
       setError(error.message);
     }
   };
@@ -119,14 +100,21 @@ export default function Signin() {
     setIsModalOpen(false);
   };
 
+  // Nouvelle fonction pour gérer l'appui sur la touche "Enter"
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      signIn(); // Appelle la fonction signIn lorsque "Enter" est pressé
+    }
+  };
+
   return (
     <>
       <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="w-full max-w-md px-6 py-12 bg-white text-black shadow-lg rounded-lg">
           <div className="sm:mx-auto sm:w-full sm:max-w-md">
             <img
-              className="mx-auto h-20 w-auto mb-8" // Larger logo with extra margin on bottom
-              src="/logo.svg" // Your custom SVG logo
+              className="mx-auto h-20 w-auto mb-8"
+              src="/BISOU_RIVAGE_BLEU_FOND_TRANSPARENT.svg"
               alt="Your Company Logo"
             />
             <h2 className="mt-4 text-center text-3xl font-bold tracking-tight text-black">
@@ -148,6 +136,7 @@ export default function Signin() {
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={handleKeyDown} // Ajoute l'événement keydown
                     required
                     className="block w-full rounded-md bg-black/5 text-black py-2 px-3 shadow-sm focus:ring-2 focus:ring-black focus:border-black placeholder-gray-400 sm:text-sm"
                     placeholder="Enter your email"
@@ -177,7 +166,7 @@ export default function Signin() {
         isOpen={isModalOpen}
         onClose={handleClose}
         title="Inscription"
-        description="Il semblerait que vous vous inscriviez pour la première fois. Cliquez sur le bouton ci-dessous pour recevoir votre email d'inscription."
+        description="Il semblerait que vous vous inscriviez pour la première fois. Cliquez sur le bouton ci-dessous pour recevoir votre email d'inscription. Pensez a bien utilisé ce même navigateur pour vous connecter."
         actionText="Recevoir"
         onActionClick={handleSignUp}
       />

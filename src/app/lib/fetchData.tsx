@@ -1,14 +1,14 @@
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/app/firebase";
 
-// Interface pour typer les données récupérées
 interface ImageData {
   id: string;
   description: string;
   sizes: { size: string; price: number; stock: number }[];
   images: { link: string }[];
   artisteName: string;
-  email: string;
+  artisteEmail: string;
+  artisteId: string;
 }
 
 export async function fetchData(collection: string, id: string): Promise<ImageData | null> {

@@ -46,7 +46,7 @@ const CheckoutPage = () => {
     verifyCart(); // Vérifier les produits du panier dès l'arrivée sur la page
   }, []);
 
-  const fee = 10; 
+  const fee = 12.5; 
   useEffect(() => {
     const total = items.reduce(
       (total, item) => total + item.price * item.quantity,
@@ -143,7 +143,7 @@ const CheckoutPage = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          cartItems: updatedItems, // Utiliser les produits mis à jour
+          cartItems: updatedItems,
         }),
       });
 
@@ -274,7 +274,7 @@ const CheckoutPage = () => {
                 <p className="text-sm font-medium">{formatPrice(cartTotal)}</p>
               </div>
               <div className="flex items-center justify-between">
-                <p className="text-sm">Frais de transaction</p>
+                <p className="text-sm">Frais de livraison</p>
                 <p className="text-sm font-medium">{formatPrice(fee)}</p>
               </div>
               <div className="flex items-center justify-between font-medium text-gray-900">
