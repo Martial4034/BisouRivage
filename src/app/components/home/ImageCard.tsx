@@ -14,8 +14,8 @@ export default function ImageCard({ imageUrl, secondImageUrl, title, format, id 
   const [isLoaded, setIsLoaded] = useState(false);
   const [isHovered, setIsHovered] = useState(false); // État pour le survol
   const { ref, inView } = useInView({
-    triggerOnce: true, // Charger une seule fois
-    threshold: 0.1, // Charger lorsque 10% de l'image est visible
+    triggerOnce: true,
+    threshold: 0.1, 
   });
 
   return (
