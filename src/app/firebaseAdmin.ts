@@ -27,6 +27,7 @@ export const firestoreAdmin = admin.firestore();
 export const storageAdmin = admin.storage(); // Nouvelle ligne pour initialiser Firebase Storage
 export const FieldValue = admin.firestore.FieldValue;
 export const FieldPath = admin.firestore.FieldPath;
+export const Timestamp = admin.firestore.Timestamp;
 
 // Fonction pour obtenir le rôle d'un utilisateur depuis Firestore
 export async function getUserRole(uid: string): Promise<string | null> {

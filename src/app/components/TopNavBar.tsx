@@ -137,17 +137,11 @@ export function TopNavBar() {
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Button
-                  className="flex items-center h-5"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => signOut()}
-                >
-                  <div className="h-4 w-4" />
+                <DropdownMenuItem asChild>
+                <Button variant="ghost" onClick={() => signOut()}>
                   Logout
                 </Button>
-              </DropdownMenuItem>
+                </DropdownMenuItem>
             </DropdownMenuContent>
           )}
         </DropdownMenu>

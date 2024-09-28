@@ -1,8 +1,9 @@
 import * as React from 'react';
 
 interface EmailTemplateProps {
-  url: string;
   email: string;
+  code: string;
+  url?: string;
 }
 
 // Global styles for the email, ensuring UTF-8 encoding and mobile responsiveness
@@ -51,7 +52,7 @@ const footerStyle = {
 };
 
 // Template for the Sign-In email
-export const SignInEmailTemplate: React.FC<Readonly<EmailTemplateProps>> = ({ url, email }) => (
+export const SignInEmailTemplate: React.FC<Readonly<EmailTemplateProps>> = ({ url, email, code }) => (
   <html lang="fr">
     <head>
       <meta httpEquiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -59,18 +60,23 @@ export const SignInEmailTemplate: React.FC<Readonly<EmailTemplateProps>> = ({ ur
       <title>Connexion Bisourivage</title>
     </head>
     <body style={containerStyle}>
-      <img src="https://bisourivage.fr/BISOU_RIVAGE_BLEU_FOND_TRANSPARENT.svg" alt="Bisourivage Logo" style={{ width: "100px", marginBottom: "24px" }} />
+      <img src="https://bisourivage.fr/bleu_fond_transparent.png" alt="Bisourivage Logo" style={{ width: "100px", marginBottom: "24px" }} />
       <h1 style={headingStyle}>Bienvenue sur Bisourivage</h1>
-      <p style={textStyle}>Merci de vous être connecté. Cliquez sur le bouton ci-dessous pour accéder à votre compte :</p>
-      <a href={url} style={linkStyle}>Se connecter à mon compte</a>
+      <p style={textStyle}>Merci de vous être connecté</p>
+      <h1 style={headingStyle}>Utilisez le code suivant pour vous connecté :</h1>
+      <h2 style={{ fontSize: '24px', letterSpacing: '4px' }}>{code}</h2>
+      <p style={textStyle}>Ce code est valable pendant 10 minutes.</p>
+      <p style={textStyle}>Cliquez sur le bouton pour être redirigé :</p>
+      <a href={url} style={linkStyle}>Lien pour rentré mon code</a>
       <p style={textStyle}>Si vous n'avez pas demandé cette connexion, veuillez ignorer cet email.</p>
       <p style={footerStyle}>Email : {email}</p>
     </body>
   </html>
 );
 
+
 // Template for the Sign-Up email
-export const SignUpEmailTemplate: React.FC<Readonly<EmailTemplateProps>> = ({ url, email }) => (
+export const SignUpEmailTemplate: React.FC<Readonly<EmailTemplateProps>> = ({ url, email, code }) => (
   <html lang="fr">
     <head>
       <meta httpEquiv="Content-Type" content="text/html; charset=UTF-8" />
@@ -78,10 +84,13 @@ export const SignUpEmailTemplate: React.FC<Readonly<EmailTemplateProps>> = ({ ur
       <title>Inscription Bisourivage</title>
     </head>
     <body style={containerStyle}>
-      <img src="https://bisourivage.fr/BISOU_RIVAGE_BLEU_FOND_TRANSPARENT.svg" alt="Bisourivage Logo" style={{ width: "100px", marginBottom: "24px" }} />
+      <img src="https://bisourivage.fr/bleu_fond_transparent.png" alt="Bisourivage Logo" style={{ width: "100px", marginBottom: "24px" }} />
       <h1 style={headingStyle}>Bienvenue sur Bisourivage</h1>
-      <p style={textStyle}>Merci pour votre inscription. Cliquez sur le bouton ci-dessous pour activer votre compte :</p>
-      <a href={url} style={linkStyle}>Activer mon compte</a>
+      <h1 style={headingStyle}>Ou utilisez le code suivant :</h1>
+      <h2 style={{ fontSize: '24px', letterSpacing: '4px' }}>{code}</h2>
+      <p style={textStyle}>Ce code est valable pendant 10 minutes.</p>
+      <p style={textStyle}>Merci pour votre inscription. Cliquez sur le bouton pour être redirigé :</p>
+      <a href={url} style={linkStyle}>Lien pour rentré mon code</a>
       <p style={textStyle}>Si vous n'avez pas demandé cette inscription, veuillez ignorer cet email.</p>
       <p style={footerStyle}>Email : {email}</p>
     </body>
