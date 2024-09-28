@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/app/firebase";
-import { useSession } from "next-auth/react";
+import { useSession } from 'next-auth/react';
 import { useRouter } from "next/navigation";
 import Breadcrumbs from "@/app/components/home/Breadcrumbs";
 import ImageGrid from "@/app/components/artiste/manage/ImageGrid";
@@ -18,15 +18,26 @@ interface ImageData {
 }
 
 export default function ManageImages() {
-  const { data: session, status } = useSession(); 
+  const { data: session, status } = useSession();
   const [images, setImages] = useState<ImageData[]>([]);
   const [loading, setLoading] = useState(true);
   const [formatFilter, setFormatFilter] = useState("all");
   const router = useRouter();
 
+  useEffect(() => {
+    if (status === "loading") return; // Si la session est encore en cours de chargement, on attend
+
+    // Vérification que la session et l'utilisateur existent, et que le rôle est artiste
+    if (session && session.user && session.user.email && session.user.role === "artiste") {
+      fetchImages(session.user.email); // Appeler fetchImages avec l'email de l'utilisateur
+    } else {
+      router.push("/403"); // Rediriger vers la page d'erreur si l'utilisateur n'a pas le bon rôle
+    }
+  }, [session, status, router]);
+
   const fetchImages = async (userEmail: string) => {
     try {
-      const q = query(collection(db, "uploads"), where("email", "==", userEmail));
+      const q = query(collection(db, "uploads"), where("artisteEmail", "==", userEmail));
       const snapshot = await getDocs(q);
       if (snapshot.empty) {
         setLoading(false);
@@ -47,16 +58,7 @@ export default function ManageImages() {
     }
   };
 
-  useEffect(() => {
-    if (status === "loading") return; // Si la session est encore en cours de chargement, on attend
 
-    // Vérification que la session et l'utilisateur existent, et que le rôle est artiste
-    if (session && session.user && session.user.email && session.user.role === "artiste") {
-      fetchImages(session.user.email); // Appeler fetchImages avec l'email de l'utilisateur
-    } else {
-      router.push("/403"); // Rediriger vers la page d'erreur si l'utilisateur n'a pas le bon rôle
-    }
-  }, [session, status, router]);
 
   const handleDelete = async (id: string) => {
     try {

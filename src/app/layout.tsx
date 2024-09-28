@@ -2,9 +2,10 @@
 
 import { TopNavBar } from './components/TopNavBar';
 import './globals.css';
-import SessionProvider from './SessionProvider';
-import ClientWrapper from './ClientWrapper';
+
 import { Toaster } from "@/app/components/ui/toaster";
+import Providers from './Providers';
+import ClientWrapper from './ClientWrapper';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -36,13 +37,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta charSet="UTF-8" />
       </head>
       <body className="h-full">
-        <SessionProvider>
+        <Providers>
           <ClientWrapper>
             <TopNavBar />
             {children}
             <Toaster />
           </ClientWrapper>
-        </SessionProvider>
+        </Providers>
       </body>
     </html>
   );

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const existingData = existingDoc.data();
 
     // Vérifier si l'email du token correspond à l'email du produit
-    if (existingData?.email !== token.email) {
+    if (existingData?.artisteEmail !== token.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
