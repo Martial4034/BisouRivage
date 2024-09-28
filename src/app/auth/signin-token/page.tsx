@@ -3,12 +3,12 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { CircularProgress } from '@mui/material';
 
-export default function SigninToken() {
+function SigninTokenContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // useSearchParams is used within the Suspense boundary
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -57,12 +57,29 @@ export default function SigninToken() {
   }, [searchParams, router]);
 
   return (
+    <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md text-center">
+      {loading ? (
+        <CircularProgress color="inherit" />
+      ) : error ? (
+        <div>
+          <h3 className="text-2xl font-bold text-red-500">Erreur</h3>
+          <p className="mt-4 text-red-500">{error}</p>
+        </div>
+      ) : (
+        <p>Vérification en cours...</p>
+      )}
+    </div>
+  );
+}
+
+export default function SigninToken() {
+  return (
     <div className="flex min-h-screen items-center justify-center bg-white text-black">
       <div className="w-full max-w-md px-6 py-12 bg-white text-black shadow-lg rounded-lg">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <img
             className="mx-auto h-20 w-auto mb-8"
-            src="/BISOU_RIVAGE_BLEU_FOND_TRANSPARENT.svg" 
+            src="/BISOU_RIVAGE_BLEU_FOND_TRANSPARENT.svg"
             alt="Bisou Rivage Logo"
           />
           <h2 className="text-center text-3xl font-bold tracking-tight text-black">
@@ -70,18 +87,10 @@ export default function SigninToken() {
           </h2>
         </div>
 
-        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md text-center">
-          {loading ? (
-            <CircularProgress color="inherit" />
-          ) : error ? (
-            <div>
-              <h3 className="text-2xl font-bold text-red-500">Erreur</h3>
-              <p className="mt-4 text-red-500">{error}</p>
-            </div>
-          ) : (
-            <p>Vérification en cours...</p>
-          )}
-        </div>
+        {/* Wrap the SigninTokenContent component in Suspense */}
+        <Suspense fallback={<CircularProgress color="inherit" />}>
+          <SigninTokenContent />
+        </Suspense>
       </div>
     </div>
   );

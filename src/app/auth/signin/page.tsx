@@ -3,7 +3,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { CircularProgress } from '@mui/material';
 import { CustomAlertDialog } from '@/app/components/ui/CustomAlertDialog';
@@ -18,7 +18,7 @@ import { Button } from '@/app/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/app/components/ui/dialog';
 import { useSearchParams } from 'next/navigation';
 
-export default function Signin() {
+function SigninContent() {
   const [email, setEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [isOtpDialogOpen, setIsOtpDialogOpen] = useState(false);
@@ -91,7 +91,6 @@ export default function Signin() {
         setTimer(600); // 10 minutes
         setIsOtpDialogOpen(true);
       } else {
-        // Gérer le cas où l'utilisateur n'existe pas, peut-être proposer de s'inscrire
         setIsModalOpen(true);
       }
     } catch (error: any) {
@@ -127,10 +126,6 @@ export default function Signin() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleClose = () => {
-    setIsModalOpen(false);
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -172,6 +167,10 @@ export default function Signin() {
     } finally {
       setIsOtpLoading(false);
     }
+  };
+
+  const handleClose = () => {
+    setIsModalOpen(false);
   };
 
   return (
@@ -268,5 +267,13 @@ export default function Signin() {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+export default function Signin() {
+  return (
+    <Suspense fallback={<CircularProgress />}>
+      <SigninContent />
+    </Suspense>
   );
 }
