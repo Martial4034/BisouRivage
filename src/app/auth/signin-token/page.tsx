@@ -80,7 +80,7 @@ export default function SigninToken() {
           <img
             className="mx-auto h-20 w-auto mb-8"
             src="/BISOU_RIVAGE_BLEU_FOND_TRANSPARENT.svg"
-            alt="Bisou Rivage Logo"
+            alt="Logo de l'application BisouRivage"
           />
           <h2 className="text-center text-3xl font-bold tracking-tight text-black">
             Vérification du token

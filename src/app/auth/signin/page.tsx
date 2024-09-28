@@ -50,7 +50,10 @@ function SigninContent() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      const redirectUrl = sessionStorage.getItem('redirectUrl') || '/';
+      let redirectUrl = sessionStorage.getItem('redirectUrl') || '/';
+      if (redirectUrl === '/auth/signin-token') {
+      redirectUrl = '/';
+      }
       router.push(redirectUrl);
     }
   }, [status, router]);
@@ -181,7 +184,7 @@ function SigninContent() {
             <img
               className="mx-auto h-20 w-auto mb-8"
               src="/BISOU_RIVAGE_BLEU_FOND_TRANSPARENT.svg"
-              alt="Bisourivage Logo"
+              alt="Logo de l'application BisouRivage"
             />
             <h2 className="mt-4 text-center text-3xl font-bold tracking-tight text-black">
               Connexion à votre compte
@@ -222,8 +225,20 @@ function SigninContent() {
                 </button>
               </div>
 
+
+
               {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-              {success && <p className="mt-2 text-sm text-green-600">{success}</p>}
+              {success && 
+                <div>
+                  <button
+                    onClick={() => setIsOtpDialogOpen(true)}
+                    className="w-full flex justify-center rounded-md bg-gray-500 py-2 text-sm font-semibold text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-black focus:ring-opacity-50 transition duration-150 ease-in-out"
+                  >
+                    Entrer votre code
+                  </button>
+                  <p className="mt-2 text-sm text-green-600">{success}</p>
+                </div>
+              }
             </div>
           </div>
         </div>
@@ -240,9 +255,9 @@ function SigninContent() {
 
       <Dialog open={isOtpDialogOpen} onOpenChange={setIsOtpDialogOpen}>
         <DialogContent>
-          <DialogHeader>
+            <DialogHeader>
             <DialogTitle>Entrez le code reçu</DialogTitle>
-          </DialogHeader>
+            </DialogHeader>
           <div className="mt-4 flex justify-center">
             <InputOTP maxLength={6} value={otpCode} onChange={handleOtpChange}>
               <InputOTPGroup>

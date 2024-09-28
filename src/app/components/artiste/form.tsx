@@ -330,7 +330,7 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
                   <>
                     <img
                       src={URL.createObjectURL(uploadedImages[index] as File)}
-                      alt={`Image ${index + 1}`}
+                      alt={`Image ${index + 1} du produit à uploader`}
                       className="object-cover w-full h-full"
                     />
                     <button
@@ -345,7 +345,7 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
                   <>
                     <img
                       src={(uploadedImages[index] as { link: string }).link}
-                      alt={`Image ${index + 1}`}
+                      alt={`Image ${index + 1} du produit à uploader`}
                       className="object-cover w-full h-full"
                     />
                     <button

@@ -103,8 +103,8 @@ export const OrderSummaryEmailTemplate: React.FC<Readonly<OrderSummaryEmailTempl
     </head>
     <body style={containerStyle}>
       <img
-        src="https://bisourivage.fr/BISOU_RIVAGE_BLEU_FOND_TRANSPARENT.svg"
-        alt="Bisourivage Logo"
+        src="https://bisourivage.fr/bleu_fond_transparent.png"
+        alt="Bisourivage Logo pour les emails"
         style={{ width: "100px", marginBottom: "24px" }}
       />
       <h1 style={headingStyle}>Merci pour votre commande !</h1>

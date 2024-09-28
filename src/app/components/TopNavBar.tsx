@@ -47,7 +47,7 @@ export function TopNavBar() {
       {/* Mobile logo on the left, center on larger screens */}
       <div className="flex sm:justify-center w-full sm:w-auto">
         <Link href="/">
-          <img src="/center-logo.svg" alt="Center Logo" className="h-8" />
+          <img src="/center-logo.svg" alt="Logo centré de Bisou Rivage" className="h-8" />
         </Link>
       </div>
 

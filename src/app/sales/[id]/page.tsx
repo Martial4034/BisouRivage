@@ -21,6 +21,7 @@ import {
 } from '@/app/components/ui/carousel';
 import { useMediaQuery } from 'react-responsive';
 import useEmblaCarousel from 'embla-carousel-react';
+import Head from 'next/head';
 
 // Interfaces importées
 import { ImageFirestoreData, ImageData } from '@/app/types';
@@ -172,6 +173,15 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
   const thumbnailHeight = isVertical ? 125 : 100;
 
   return (
+    <>
+      <Head>
+        <title>{params.id} - {imageData.artisteName} - BisouRivage</title>
+        <meta name="description" content={imageData.description} />
+        <meta property="og:title" content={`${params.id} - ${imageData.artisteName} - BisouRivage`} />
+        <meta property="og:description" content={imageData.description} />
+        <meta property="og:image" content={imageData.images[0]?.link || ''} />
+        <meta property="og:url" content={`https://bisourivage.fr/sales/${params.id}`} />
+      </Head>
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
       <div className="flex flex-col md:flex-row gap-8">
         {/* Section Image */}
@@ -315,5 +325,6 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
