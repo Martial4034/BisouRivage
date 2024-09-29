@@ -1,8 +1,6 @@
-// src/app/layout.tsx
-
 import { TopNavBar } from './components/TopNavBar';
 import './globals.css';
-
+import { GoogleAnalytics } from '@next/third-parties/google'
 import { Toaster } from "@/app/components/ui/toaster";
 import Providers from './Providers';
 import ClientWrapper from './ClientWrapper';
@@ -37,6 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta charSet="UTF-8" />
       </head>
       <body className="h-full">
+      <GoogleAnalytics gaId="G-S29V577DYX" />
         <Providers>
           <ClientWrapper>
             <TopNavBar />
