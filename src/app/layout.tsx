@@ -10,12 +10,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr" className="h-full">
       <head>
         {/* Balises méta essentielles */}
-        <title>BisouRivage - Marketplace de Photographies d'Artistes Français</title>
-        <meta name="description" content="Découvrez et achetez des photographies de paysages français réalisées par de jeunes artistes diplômés. BisouRivage est votre marketplace dédiée à l'art photographique français." />
+        <title>bisou rivage - Marketplace de Photographies d'Artistes Français</title>
+        <meta name="description" content="Découvrez et achetez des photographies de paysages français réalisées par de jeunes artistes diplômés. Bisourivage est votre marketplace dédiée à l'art photographique français." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
         {/* Balises Open Graph pour les réseaux sociaux */}
-        <meta property="og:title" content="BisouRivage - Marketplace de Photographies d'Artistes Français" />
+        <meta property="og:title" content="bisou rivage - Marketplace de Photographies d'Artistes Français" />
         <meta property="og:description" content="Découvrez et achetez des photographies de paysages français réalisées par de jeunes artistes diplômés." />
         <meta property="og:image" content="https://bisourivage.fr/images/og-image.jpg" />
         <meta property="og:url" content="https://bisourivage.fr" />

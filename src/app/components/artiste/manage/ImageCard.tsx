@@ -1,13 +1,23 @@
+'use client';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { useInView } from 'react-intersection-observer';
 import { Button } from '@/app/components/ui/button';
-import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogAction, AlertDialogCancel } from '@/app/components/ui/alert-dialog';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '@/app/components/ui/alert-dialog';
 
 interface ImageCardProps {
   imageUrl: string;
   title: string;
-  format: 'H' | 'V'; 
+  format: 'H' | 'V';
   id: string;
   onDelete: (id: string) => void;
 }
@@ -31,9 +41,7 @@ export default function ImageCard({ imageUrl, title, format, id, onDelete }: Ima
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {!isLoaded && (
-          <div className="bg-gray-200 animate-pulse h-64 w-full" />
-        )}
+        {!isLoaded && <div className="bg-gray-200 animate-pulse h-64 w-full" />}
 
         {inView && (
           <>
@@ -62,7 +70,8 @@ export default function ImageCard({ imageUrl, title, format, id, onDelete }: Ima
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <h2>Supprimer ce produit ?</h2>
+                      <h1>Supprimer ce produit ?</h1>
+                      <h2>{`ID du produit : ${id}`}</h2>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Annuler</AlertDialogCancel>

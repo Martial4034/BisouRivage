@@ -29,6 +29,8 @@ export default function ManageImages() {
 
     // Vérification que la session et l'utilisateur existent, et que le rôle est artiste
     if (session && session.user && session.user.email && session.user.role === "artiste") {
+      // clear le champ editId du local storage 
+      localStorage.removeItem('editId');
       fetchImages(session.user.email); // Appeler fetchImages avec l'email de l'utilisateur
     } else {
       router.push("/403"); // Rediriger vers la page d'erreur si l'utilisateur n'a pas le bon rôle
@@ -58,17 +60,16 @@ export default function ManageImages() {
     }
   };
 
-
-
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/artiste/delete/${id}`, { method: "DELETE" });
+      const response = await fetch(`/api/artiste/delete/${id}`, { method: 'DELETE' });
       if (!response.ok) {
-        throw new Error("Erreur lors de la suppression");
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors de la suppression');
       }
       setImages((prev) => prev.filter((image) => image.id !== id));
     } catch (error) {
-      console.error("Erreur lors de la suppression du produit:", error);
+      console.error('Erreur lors de la suppression du produit:', error);
     }
   };
 
