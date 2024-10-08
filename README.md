@@ -73,7 +73,13 @@ Bisourivage permet aux artistes de partager leur art avec une audience plus larg
 
 ## Technologies Utilisées
 
-![Next JS](https://img.shields.io/badge/Next-black?style=for-the-badge&logo=next.js&logoColor=white)  ![Firebase](https://img.shields.io/badge/firebase-ffca28?style=for-the-badge&logo=firebase&logoColor=black) ![Stripe](https://img.shields.io/badge/Stripe-626CD9?style=for-the-badge&logo=Stripe&logoColor=white) ![Vercel](https://img.shields.io/badge/vercel-%23000000.svg?style=for-the-badge&logo=vercel&logoColor=white)
+- ![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white) **Next.js 14**: Framework principal pour le développement frontend et backend.
+- ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white) **Tailwind CSS**: Stylisation rapide et responsive du sondage et du dashboard.
+- ![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black) **Firebase Firestore**: Base de données NoSQL pour stocker les réponses au sondage et les informations des utilisateurs.
+- ![Resend](https://img.shields.io/badge/Resend-0A0A0A?style=for-the-badge&logo=resend&logoColor=white) **Resend**: Service d'envoi d'emails transactionnels pour la confirmation et le remerciement des participants.
+- ![NextAuth](https://img.shields.io/badge/NextAuth.js-000000?style=for-the-badge&logo=nextauthdotjs&logoColor=white) **NextAuth + Middleware**: Gestion de l'authentification sécurisée des employés accédant au dashboard.
+- ![Chart.js](https://img.shields.io/badge/Chart.js-FF6384?style=for-the-badge&logo=chartdotjs&logoColor=white) **Chart.js**: Bibliothèque de graphiques pour la visualisation des données.
+- ![Vercel](https://img.shields.io/badge/Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white) **Vercel**: Plateforme de déploiement pour une mise en production rapide et fiable.
 
 ### Explication Détaillée
 
@@ -105,7 +111,7 @@ Bisourivage permet aux artistes de partager leur art avec une audience plus larg
 
 Grâce à **Next.js**, nous avons intégré les meilleures pratiques SEO pour assurer que Bisourivage soit bien référencé sur les moteurs de recherche. Cela inclut des métadonnées optimisées, des sitemaps automatiques et une structure de site organisée, garantissant une visibilité maximale.
 
-![enter image description here](https://i.imgur.com/MSZlZTQ.png)
+![seo-proof](https://i.imgur.com/MSZlZTQ.png)
 
 ### Accessibilité
 
