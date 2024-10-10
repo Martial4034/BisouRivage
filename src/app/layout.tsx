@@ -1,11 +1,34 @@
+"use client";
+
+import { useEffect } from 'react';
 import { TopNavBar } from './components/TopNavBar';
 import './globals.css';
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { Toaster } from "@/app/components/ui/toaster";
 import Providers from './Providers';
 import ClientWrapper from './ClientWrapper';
+import Footer from '@/app/components/Footer';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Désactiver le menu contextuel
+    const handleContextMenu = (event: MouseEvent) => event.preventDefault();
+    document.addEventListener('contextmenu', handleContextMenu);
+
+    // Désactiver les raccourcis clavier
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && (event.key === 's' || event.key === 'u')) {
+        event.preventDefault();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   return (
     <html lang="fr" className="h-full">
       <head>
@@ -35,12 +58,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta charSet="UTF-8" />
       </head>
       <body className="h-full">
-      <GoogleAnalytics gaId="G-S29V577DYX" />
+        <GoogleAnalytics gaId="G-S29V577DYX" />
         <Providers>
           <ClientWrapper>
             <TopNavBar />
             {children}
             <Toaster />
+            <Footer />
           </ClientWrapper>
         </Providers>
       </body>
