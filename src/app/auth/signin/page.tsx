@@ -72,6 +72,12 @@ function SigninContent() {
   }, [timer]);
 
   const sendOtp = async () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Veuillez saisir une adresse email valide');
+      return;
+    }
+
     setIsButtonDisabled(true);
     setIsLoading(true);
     setError('');
