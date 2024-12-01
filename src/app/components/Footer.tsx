@@ -6,7 +6,7 @@ import Link from 'next/link';
 
 export default function Footer() {
   return (
-    <footer className="bg-white py-6 border-t border-gray-200">
+    <footer className="bg-white py-6 border-t border-gray-200 mt-auto">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between text-center sm:text-left space-y-4 sm:space-y-0">
         {/* FAQ */}
         <div className="flex justify-center sm:justify-start">

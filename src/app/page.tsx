@@ -12,7 +12,7 @@ export default function Home() {
       {/* Breadcrumbs pour la navigation */}
       <Breadcrumbs formatFilter={formatFilter} setFormatFilter={setFormatFilter} />
 
-      <div className="max-w-screen-xl mx-auto">
+      <div className="max-w-screen-xl  mx-auto">
         {/* Affichage des images */}
         <ImageGrid formatFilter={formatFilter} />
       </div>

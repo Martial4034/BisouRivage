@@ -7,6 +7,14 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
 });
 
+// Fonction pour générer un identificationNumber aléatoire
+function generateIdentificationNumber(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  return Array.from({ length: 8 }, () => 
+    chars.charAt(Math.floor(Math.random() * chars.length))
+  ).join('');
+}
+
 export async function POST(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   if (!token) {
@@ -35,7 +43,10 @@ export async function POST(req: NextRequest) {
       const sizeInfoIndex = productData?.sizes.findIndex(
         (size: any) => size.size === item.format
       );
+    
       const sizeInfo = productData?.sizes[sizeInfoIndex];
+      console.log("Size info:", sizeInfo);
+      console.log("Next serial number:", sizeInfo.nextSerialNumber);
 
       if (!sizeInfo || sizeInfo.stock < item.quantity) {
         return NextResponse.json(
@@ -57,6 +68,14 @@ export async function POST(req: NextRequest) {
 
       const item_name_format = item.name + ' (' + item.format + ')';
 
+      // Générer les identificationNumbers en fonction de la quantité
+      const identificationNumbersMap = Array.from(
+        { length: item.quantity },
+        (_, index) => ({
+          [generateIdentificationNumber()]: (sizeInfo.nextSerialNumber + index).toString()
+        })
+      );
+
       lineItems.push({
         price_data: {
           currency: 'eur',
@@ -70,6 +89,8 @@ export async function POST(req: NextRequest) {
               artisteEmail: item.artisteEmail,
               artisteId: item.artisteId,
               format: item.format,
+              serialNumber: sizeInfo.nextSerialNumber,
+              identificationNumbers: JSON.stringify(identificationNumbersMap),
             },
           },
           unit_amount: sizeInfo.price * 100,
@@ -116,6 +137,7 @@ export async function POST(req: NextRequest) {
       },
       metadata: {
         userId: token.uid as string,
+
       },
     });
     return NextResponse.json(

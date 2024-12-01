@@ -62,18 +62,20 @@ export async function POST(req: NextRequest) {
       // Extraire les informations des produits
       const products = lineItems.map((item: any) => {
         const productMetadata = item.price?.product?.metadata || {};
-      
-
+        const identificationNumbersMap = JSON.parse(productMetadata.identificationNumbers || '[]');
+        
         return {
           productId: productMetadata.id || "unknown",
           price: ((item.price?.unit_amount ?? 0) * (item.quantity ?? 0)) / 100,
           quantity: item.quantity ?? 0,
           imageUrl: productMetadata.imageUrl || "",
-          artisteEmail: productMetadata.artisteEmail || "unknown", // Correction : vérifiez le nom exact
-          artisteName: productMetadata.artisteName || "Artiste Anonyme", // Correction : vérifiez le nom exact
+          artisteEmail: productMetadata.artisteEmail || "unknown",
+          artisteName: productMetadata.artisteName || "Artiste Anonyme",
           artisteId: productMetadata.artisteId || "Id non connu",
           name: item.price?.product?.name || "unknown",
           format: productMetadata.format || "unknown",
+          serialNumber: productMetadata.serialNumber || "0",
+          identificationNumbersMap: identificationNumbersMap,
         };
       });
 
@@ -111,65 +113,51 @@ export async function POST(req: NextRequest) {
 
       // Mettre à jour le stock des produits
       for (const product of products) {
-        const productRef = firestoreAdmin
-          .collection("uploads")
-          .doc(product.productId);
+        const productRef = firestoreAdmin.collection("uploads").doc(product.productId);
 
-        await firestoreAdmin
-          .runTransaction(async (transaction) => {
-            const productDoc = await transaction.get(productRef);
+        const serialNumbers = await firestoreAdmin.runTransaction(async (transaction) => {
+          const productDoc = await transaction.get(productRef);
+          if (!productDoc.exists) {
+            throw new Error(`Product ${product.productId} does not exist.`);
+          }
 
-            if (!productDoc.exists) {
-              console.error(
-                `Product with ID ${product.productId} does not exist.`
-              );
-              throw new Error(`Product ${product.productId} does not exist.`);
-            }
+          const productData = productDoc.data();
+          const sizes = productData?.sizes || [];
+          const formatIndex = sizes.findIndex(
+            (size: { size: string }) => size.size === product.format
+          );
 
-            const productData = productDoc.data();
-            const sizes = productData?.sizes || [];
-
-            // Identifier l'index du format dans le tableau sizes
-            const formatIndex = sizes.findIndex(
-              (size: { size: string }) => size.size === product.format
+          if (formatIndex === -1) {
+            throw new Error(
+              `Format ${product.format} for product ID ${product.productId} does not exist.`
             );
+          }
 
-            if (formatIndex === -1) {
-              console.error(
-                `Format ${product.format} for product ID ${product.productId} does not exist.`
-              );
-              throw new Error(
-                `Format ${product.format} for product ID ${product.productId} does not exist.`
-              );
-            }
+          const currentStock = sizes[formatIndex].stock;
+          const currentSerialNumber = sizes[formatIndex].nextSerialNumber || 1;
 
-            const currentStock = sizes[formatIndex].stock;
+          // Générer les numéros de série pour cette commande
+          const generatedSerialNumbers = Array.from({ length: product.quantity }, (_, i) => 
+            (currentSerialNumber + i).toString().padStart(2, '0')
+          );
 
-            // Vérifier si le stock est suffisant
-            if (currentStock - product.quantity < 0) {
-              console.error(
-                `Stock insuffisant pour le produit ${product.name} (${product.format}).`
-              );
-              throw new Error(
-                `Stock insuffisant pour le produit ${product.name} (${product.format}). Disponible : ${currentStock}.`
-              );
-            }
+          // Mise à jour du stock et du prochain numéro de série
+          sizes[formatIndex].stock = currentStock - product.quantity;
+          sizes[formatIndex].nextSerialNumber = currentSerialNumber + product.quantity;
 
-            // Décrémenter le stock en mémoire
-            sizes[formatIndex].stock = currentStock - product.quantity;
 
-            // Mettre à jour le document avec le nouveau tableau 'sizes'
-            transaction.update(productRef, { sizes });
 
-            // Log pour traçabilité
-            console.log(
-              `Stock mis à jour pour le produit ${product.productId}, format ${product.format}. Stock actuel : ${sizes[formatIndex].stock}`
-            );
-          })
-          .catch((error) => {
-            console.error("Error updating stock:", error);
-            // Gérer l'erreur si nécessaire
+          // Mettre à jour le document avec les sizes et serialNumbers
+          transaction.update(productRef, { 
+            sizes,
+            
           });
+
+          return generatedSerialNumbers;
+        });
+
+        // Ajouter les numéros de série au produit dans la commande
+        product.serialNumber = serialNumbers.join(', ');
       }
 
       // Préparer les données de l'email

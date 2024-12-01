@@ -13,6 +13,8 @@ export interface Product {
   name: string;
   format: string;
   status?: string; // Statut du produit pour l'artiste
+  serialNumber?: string;
+  serialNumbers?: string[];
 }
 
 export interface OrderFirestoreData {
@@ -64,4 +66,26 @@ export interface ImageData {
   images: { id: number; link: string }[];
   mainImage: string;
   sizes: { size: string; price: number; stock: number }[];
+}
+
+// Ajoutez ou modifiez le type pour les tailles
+interface ProductSize {
+  size: string;
+  price: number;
+  stock: number;
+  nextSerialNumber: number;
+}
+
+// Ajoutez ou modifiez le type pour les produits dans une commande
+interface OrderProduct {
+  productId: string;
+  price: number;
+  quantity: number;
+  imageUrl: string;
+  artisteEmail: string;
+  artisteName: string;
+  artisteId: string;
+  name: string;
+  format: string;
+  serialNumber: string;
 }

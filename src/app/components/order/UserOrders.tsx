@@ -4,8 +4,11 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Order } from '@/app/types';
 import { formatPrice } from '@/app/lib/utils';
+import { Button } from '@/app/components/ui/button';
 import {
   Table,
   TableBody,
@@ -30,6 +33,30 @@ function getUserMessageForStatus(status: string): string {
 }
 
 export default function UserOrders({ orders }: { orders: Order[] }) {
+  const router = useRouter();
+
+  if (!orders || orders.length === 0) {
+    return (
+      <div className="h-[calc(100vh-200px)] flex flex-col items-center justify-center">
+        <Image
+          src="/BISOU_RIVAGE_BLEU_FOND_TRANSPARENT.svg"
+          alt="Logo Bisou"
+          width={200}
+          height={200}
+          className="mb-6"
+        />
+        <h2 className="text-2xl font-semibold mb-4">Aucune commande trouvée</h2>
+        <p className="text-muted-foreground mb-6">Vous n'avez pas encore passé de commande</p>
+        <Button
+          onClick={() => router.back()}
+          variant="default"
+        >
+          Retour
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Mes Commandes</h1>

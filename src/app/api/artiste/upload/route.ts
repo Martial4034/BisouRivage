@@ -25,10 +25,11 @@ export async function POST(req: NextRequest) {
     const sizes = JSON.parse(formData.get("sizes") as string); // Récupérer les tailles avec stock et prix
 
     const cleanedSizes = sizes.map(
-      (sizeObj: { size: string; price: number; stock: number }) => ({
+      (sizeObj: { size: string; price: number; stock: number; nextSerialNumber: number }) => ({
         size: sizeObj.size,
         price: sizeObj.price,
         stock: sizeObj.stock,
+        nextSerialNumber: 1,
       })
     );
 
