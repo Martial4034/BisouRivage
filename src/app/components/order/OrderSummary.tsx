@@ -8,8 +8,13 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter,
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/app/components/ui/table';
 import { formatPrice } from '@/app/lib/utils';
-
+import { useCart } from '@/app/hooks/use-cart';
 export default function OrderSummary({ order }: { order: Order }) {
+  const { clearCart } = useCart();
+  React.useEffect(() => {
+    clearCart();
+  }, []);
+
   return (
     <div className="flex items-center justify-center min-h-screen p-4">
       <Card className="max-w-3xl mx-auto">

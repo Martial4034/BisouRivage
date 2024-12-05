@@ -292,8 +292,10 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
                   className={`flex items-center justify-center ${
                     size.stock <= 0
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : selectedSize === size.size
+                      ? 'bg-transparent text-black border-2 border-black'
                       : 'bg-black text-white'
-                  } hover:bg-gray-700 transition-colors duration-200`}
+                  } hover:bg-gray-600 transition-colors duration-200`}
                 >
                   {size.size} {size.stock <= 0 && '(Rupture de stock)'}
                 </Button>

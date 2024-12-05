@@ -202,13 +202,18 @@ const CheckoutPage = () => {
                 items.map((item) => (
                   <li key={`${item.id}-${item.format}`} className="flex py-6 sm:py-10">
                     <div className="flex-shrink-0">
+                    <Link
+                              href={`/sales/${item.id}`}
+                              className="font-medium text-gray-700 hover:text-gray-800"
+                            >
                       <Image
                         src={item.image}
                         alt={item.id}
                         width={100}
                         height={100}
                         className="object-cover"
-                      />
+                        />
+                      </Link>
                     </div>
 
                     <div className="ml-4 flex flex-1 flex-col justify-between sm:ml-6">

@@ -57,12 +57,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Autres balises méta */}
         <meta charSet="UTF-8" />
       </head>
-      <body className="h-full">
+      <body className="min-h-screen flex flex-col">
         <GoogleAnalytics gaId="G-S29V577DYX" />
         <Providers>
           <ClientWrapper>
             <TopNavBar />
-            {children}
+            <main className="flex-grow">
+              {children}
+            </main>
             <Toaster />
             <Footer />
           </ClientWrapper>

@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import sharp from 'sharp';
 import {
   storageAdmin,
   firestoreAdmin,
   FieldValue,
   FieldPath,
 } from "@/app/firebaseAdmin";
+
+async function compressImage(buffer: Buffer, quality: number = 80) {
+  try {
+    const compressedImageBuffer = await sharp(buffer)
+      .jpeg({ quality })
+      .toBuffer();
+    return compressedImageBuffer;
+  } catch (error) {
+    console.error('Erreur lors de la compression:', error);
+    return buffer;
+  }
+}
 
 export async function POST(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
@@ -23,6 +36,7 @@ export async function POST(req: NextRequest) {
     const description = formData.get("description") as string;
     const format = formData.get("format") as string;
     const sizes = JSON.parse(formData.get("sizes") as string); // Récupérer les tailles avec stock et prix
+    const compressionQuality = parseInt(formData.get("compression_quality") as string) || 80;
 
     const cleanedSizes = sizes.map(
       (sizeObj: { size: string; price: number; stock: number; nextSerialNumber: number }) => ({
@@ -60,10 +74,18 @@ export async function POST(req: NextRequest) {
     for (let i = 0; i < images.length; i++) {
       const image = images[i];
       const arrayBuffer = await image.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+      const originalBuffer = Buffer.from(arrayBuffer);
+      
+      const compressedBuffer = await compressImage(originalBuffer, compressionQuality);
+      
       const imagePath = `${uploadPath}/image_${i}.jpg`;
       const fileRef = storageAdmin.bucket().file(imagePath);
-      await fileRef.save(buffer, { contentType: image.type });
+      await fileRef.save(compressedBuffer, { 
+        contentType: 'image/jpeg',
+        metadata: {
+          cacheControl: 'public, max-age=31536000'
+        }
+      });
       await fileRef.makePublic();
       const publicUrl = `https://storage.googleapis.com/${
         storageAdmin.bucket().name

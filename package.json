@@ -59,6 +59,7 @@
     "react-modal": "^3.16.1",
     "react-responsive": "^10.0.0",
     "resend": "^3.4.0",
+    "sharp": "^0.33.5",
     "sortablejs": "^1.15.3",
     "stripe": "^16.10.0",
     "tailwind-merge": "^2.4.0",

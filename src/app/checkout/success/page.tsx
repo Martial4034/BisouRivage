@@ -4,8 +4,11 @@ import { Order } from '@/app/types';
 import { firestoreAdmin } from '@/app/firebaseAdmin';
 import OrderSummary from '@/app/components/order/OrderSummary';
 
+
 export default async function SuccessPage() {
   const session = await getServerSession(authOptions);
+  
+
 
   if (!session) {
     // Rediriger vers la page de connexion ou afficher un message
@@ -44,6 +47,7 @@ export default async function SuccessPage() {
 
   if (typeof window !== 'undefined') {
     localStorage.setItem('cart', '');
+
   }
 
   return <OrderSummary order={orderData} />;
