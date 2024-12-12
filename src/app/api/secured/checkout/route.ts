@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { cartItems } = await req.json();
+    const { cartItems, promoCodeId } = await req.json();
     const lineItems = [];
 
     for (const item of cartItems) {
@@ -139,6 +139,11 @@ export async function POST(req: NextRequest) {
         userId: token.uid as string,
 
       },
+      discounts: promoCodeId ? [
+        {
+          promotion_code: promoCodeId,
+        },
+      ] : undefined,
     });
     return NextResponse.json(
       { url: stripeSession.url },

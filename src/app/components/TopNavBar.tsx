@@ -53,10 +53,11 @@ export function TopNavBar() {
 
       {/* Right part for desktop and larger screens */}
       <div className="hidden sm:flex items-center space-x-4">
-        <Cart />
+        <div className="flex items-center gap-2">
+          <Cart />
+        </div>
 
-        {/* Dropdown menu for artists */}
-        {user?.role === 'artiste' ? (
+        {user?.role === 'artiste' && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -78,74 +79,74 @@ export function TopNavBar() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : (
-          <Link href="/dashboard/commandes" className="block">
-            <ShoppingBag />
-          </Link>
         )}
 
         {/* User avatar or login button */}
-        <DropdownMenu>
-          <DropdownMenuTrigger>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full"
-              onClick={() => {
-                if (!session) {
-                  if (pathname !== null) {
-                    window.localStorage.setItem('redirectUrl', pathname);
-                  }
-                  router.push('/auth/signin');
-                }
-              }}
-            >
-              {session ? (
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src="/placeholder-user.jpg" />
-                  <AvatarFallback>
-                    {user?.email ? getInitialsFromEmail(user.email) : 'JP'}
-                  </AvatarFallback>
-                </Avatar>
-              ) : (
-                <User className="h-8 w-8" />
-              )}
-              <span className="sr-only">Toggle user menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-
-          {session && (
-            <DropdownMenuContent align="center">
-              <div className="flex items-center gap-2 p-2">
-                <div className="grid gap-0.5 leading-none">
-                  <div className="text-sm text-muted-foreground">{user?.email}</div>
-                </div>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="flex items-center gap-2 cursor-pointer">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full"
+                  onClick={() => {
+                    if (!session) {
+                      if (pathname !== null) {
+                        window.localStorage.setItem('redirectUrl', pathname);
+                      }
+                      router.push('/auth/signin');
+                    }
+                  }}
+                >
+                  {session ? (
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src="/placeholder-user.jpg" />
+                      <AvatarFallback>
+                        {user?.email ? getInitialsFromEmail(user.email) : 'JP'}
+                      </AvatarFallback>
+                    </Avatar>
+                  ) : (
+                    <User className="h-8 w-8" />
+                  )}
+                  <span className="sr-only">Toggle user menu</span>
+                </Button>
+                <span className="text-sm text-black hover:text-gray-600">mon compte</span>
               </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Link href="#" className="flex items-center gap-2" prefetch={false}>
-                  <div className="h-4 w-4" />
-                  <span>Settings</span>
-                </Link>
-              </DropdownMenuItem>
-              {user?.role === 'artiste' && (
+            </DropdownMenuTrigger>
+
+            {session && (
+              <DropdownMenuContent align="center">
+                <div className="flex items-center gap-2 p-2">
+                  <div className="grid gap-0.5 leading-none">
+                    <div className="text-sm text-muted-foreground">{user?.email}</div>
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem>
-                  <Link href="/dashboard/commandes" className="flex items-center gap-2" prefetch={false}>
+                  <Link href="#" className="flex items-center gap-2" prefetch={false}>
                     <div className="h-4 w-4" />
-                    <span>Commandes</span>
+                    <span>Settings</span>
                   </Link>
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                <Button variant="ghost" onClick={() => signOut()}>
-                  Logout
-                </Button>
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-          )}
-        </DropdownMenu>
-
+                {user?.role === 'artiste' && (
+                  <DropdownMenuItem>
+                    <Link href="/dashboard/commandes" className="flex items-center gap-2" prefetch={false}>
+                      <div className="h-4 w-4" />
+                      <span>Commandes</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                  <Button variant="ghost" onClick={() => signOut()}>
+                    Logout
+                  </Button>
+                  </DropdownMenuItem>
+              </DropdownMenuContent>
+            )}
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Mobile responsive menu */}

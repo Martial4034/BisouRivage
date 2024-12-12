@@ -23,7 +23,7 @@ export default function CGU() {
         {/* General Sales Conditions */}
         <section className="mb-10">
           <h2 className="text-2xl font-semibold mb-4">Conditions Générales de Vente (CGV)</h2>
-          <p><strong>Caractéristiques des produits :</strong> Tirages photographiques en édition limitée, signés par l'artiste. Chaque œuvre est limitée à 15 exemplaires, avec des formats de 10x15 cm à 70x100 cm, assurant une qualité d'archivage durable.</p>
+          <p><strong>Caractéristiques des produits :</strong> Tirages photographiques en édition limitée, signés par l'artiste. Chaque œuvre est limitée à 15 exemplaires, avec 3 formats A4, A3 ou A2, assurant une qualité d'archivage durable.</p>
           <p><strong>Modalités de commande :</strong> Les commandes sont effectuées via notre site. Une confirmation par e-mail sera envoyée une fois la commande validée.</p>
           <p><strong>Moyens de paiement acceptés :</strong> Carte bancaire (Stripe), PayPal, virement bancaire. Tous les paiements sont sécurisés par la technologie SSL via Stripe.</p>
           <p><strong>Délais de livraison :</strong></p>

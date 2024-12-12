@@ -44,7 +44,7 @@ function VerificationForm() {
     setError('');
 
     try {
-      const response = await fetch('/api/verification', {
+      const response = await fetch('/api/certificat/verification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

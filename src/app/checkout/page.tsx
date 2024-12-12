@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useToast } from "@/app/hooks/use-toast";
 import { CustomAlertDialog } from '@/app/components/ui/CustomAlertDialog';
+import { Input } from '@/app/components/ui/input';
 
 const CheckoutPage = () => {
   const { data: session, status } = useSession();
@@ -22,6 +23,10 @@ const CheckoutPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
   const [cartTotal, setCartTotal] = useState(0);
+  const [promoCode, setPromoCode] = useState('');
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+  const [discount, setDiscount] = useState(0);
+  const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null);
 
   useEffect(() => {
     // Vérifier si la notification d'annulation est dans localStorage
@@ -144,6 +149,7 @@ const CheckoutPage = () => {
         },
         body: JSON.stringify({
           cartItems: updatedItems,
+          promoCodeId: appliedPromoCode,
         }),
       });
 
@@ -156,9 +162,8 @@ const CheckoutPage = () => {
       }
 
       if (url) {
-        window.location.href = url; // Rediriger vers Stripe Checkout
+        window.location.href = url;
       } else {
-        // Si aucune URL n'est retournée, arrêter le loader
         setIsLoading(false);
       }
     } catch (err) {
@@ -174,6 +179,47 @@ const CheckoutPage = () => {
 
   const redirectToSignIn = () => {
     router.push('/auth/signin');
+  };
+
+  const handleApplyPromoCode = async () => {
+    if (!promoCode) return;
+    
+    setIsApplyingPromo(true);
+    try {
+      const response = await fetch('/api/secured/promo/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: promoCode }),
+      });
+
+      const data = await response.json();
+
+      if (data.valid) {
+        setDiscount(data.discount);
+        setAppliedPromoCode(data.id);
+        toast({
+          title: 'Code promo appliqué',
+          description: `Réduction de ${data.discount}% appliquée`,
+          variant: 'default',
+        });
+      } else {
+        toast({
+          title: 'Code promo invalide',
+          description: 'Ce code promo n\'existe pas ou a expiré',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de vérifier le code promo',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsApplyingPromo(false);
+    }
   };
 
   if (items.length === 0) {
@@ -282,9 +328,42 @@ const CheckoutPage = () => {
                 <p className="text-sm">Frais de livraison</p>
                 <p className="text-sm font-medium">{formatPrice(fee)}</p>
               </div>
+              <div className="flex flex-col space-y-2">
+                <p className="text-sm font-medium">Code promo</p>
+                <div className="flex space-x-2">
+                  <Input
+                    type="text"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    placeholder="Entrez votre code"
+                    disabled={!!appliedPromoCode}
+                  />
+                  <Button
+                    onClick={handleApplyPromoCode}
+                    disabled={isApplyingPromo || !promoCode || !!appliedPromoCode}
+                    variant="outline"
+                  >
+                    {isApplyingPromo ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      'Appliquer'
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {appliedPromoCode && (
+                <div className="flex items-center justify-between text-sm">
+                  <p>Réduction ({appliedPromoCode})</p>
+                  <p className="text-green-600">-{formatPrice(cartTotal * (discount / 100))}</p>
+                </div>
+              )}
+
               <div className="flex items-center justify-between font-medium text-gray-900">
                 <p className="text-base">Total</p>
-                <p className="text-base">{formatPrice(cartTotal)}</p>
+                <p className="text-base">
+                  {formatPrice(cartTotal - (cartTotal * (discount / 100)))}
+                </p>
               </div>
             </div>
 

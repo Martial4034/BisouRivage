@@ -1,6 +1,6 @@
 'use client';
 
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingBag, ShoppingCart } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -37,13 +37,14 @@ const Cart = () => {
   return (
     <Sheet>
       <SheetTrigger className='group -m-2 flex items-center p-2'>
-        <ShoppingCart
+        <ShoppingBag
           aria-hidden='true'
           className='h-6 w-6 flex-shrink-0 text-gray-400 group-hover:text-gray-500'
         />
-        <span className='ml-2 text-sm font-medium text-gray-700 group-hover:text-gray-800'>
+        <span className='ml-2 text-sm font-medium text-gray-700 pr-2 group-hover:text-gray-800'>
           {isMounted ? itemCount : 0}
         </span>
+        <span className="text-sm text-black">mon panier</span>
       </SheetTrigger>
       <SheetContent className='flex w-full flex-col pr-0 sm:max-w-lg'>
         <SheetHeader className='space-y-2.5 pr-6'>
