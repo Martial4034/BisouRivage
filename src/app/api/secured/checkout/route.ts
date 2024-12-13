@@ -28,6 +28,25 @@ export async function POST(req: NextRequest) {
     const { cartItems, promoCodeId } = await req.json();
     const lineItems = [];
 
+    // Rechercher ou créer le customer Stripe
+    let customer;
+    const email = token.email as string;
+    
+    // Rechercher si le customer existe déjà
+    const existingCustomers = await stripe.customers.list({
+      email: email,
+      limit: 1,
+    });
+
+    if (existingCustomers.data.length > 0) {
+      customer = existingCustomers.data[0];
+    } else {
+      // Créer un nouveau customer si nécessaire
+      customer = await stripe.customers.create({
+        email: email,
+      });
+    }
+
     for (const item of cartItems) {
       const productRef = firestoreAdmin.collection('uploads').doc(item.id);
       const productDoc = await productRef.get();
@@ -99,6 +118,7 @@ export async function POST(req: NextRequest) {
       });
     }
     const stripeSession = await stripe.checkout.sessions.create({
+      customer: customer.id,
       payment_method_types: ['card'],
       line_items: lineItems,
       mode: 'payment',
@@ -108,6 +128,11 @@ export async function POST(req: NextRequest) {
       billing_address_collection: 'required',
       shipping_address_collection: {
         allowed_countries: ['FR'],
+      },
+      customer_update: {
+        shipping: 'auto',
+        address: 'auto',
+        name: 'auto',
       },
       shipping_options: [
         {
@@ -131,13 +156,11 @@ export async function POST(req: NextRequest) {
           },
         },
       ],
-      customer_email: token.email as string,
       phone_number_collection: {
         enabled: true,
       },
       metadata: {
         userId: token.uid as string,
-
       },
       discounts: promoCodeId ? [
         {
@@ -150,6 +173,7 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (err: any) {
+    console.error('Erreur Stripe:', err);
     return NextResponse.json(
       { message: err.message },
       { status: err.statusCode || 500 }

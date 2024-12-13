@@ -181,8 +181,8 @@ const CheckoutPage = () => {
     router.push('/auth/signin');
   };
 
-  const handleApplyPromoCode = async () => {
-    if (!promoCode) return;
+  const handleApplyPromoCode = async (codeToApply = promoCode) => {
+    if (!codeToApply) return;
     
     setIsApplyingPromo(true);
     try {
@@ -191,7 +191,7 @@ const CheckoutPage = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ code: promoCode }),
+        body: JSON.stringify({ code: codeToApply }),
       });
 
       const data = await response.json();
@@ -199,28 +199,40 @@ const CheckoutPage = () => {
       if (data.valid) {
         setDiscount(data.discount);
         setAppliedPromoCode(data.id);
+        localStorage.setItem('promoCode', codeToApply);
         toast({
           title: 'Code promo appliqué',
-          description: `Réduction de ${data.discount}% appliquée`,
+          description: data.message,
           variant: 'default',
         });
       } else {
+        setPromoCode('');
+        localStorage.removeItem('promoCode');
         toast({
           title: 'Code promo invalide',
-          description: 'Ce code promo n\'existe pas ou a expiré',
+          description: data.message,
           variant: 'destructive',
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Erreur:', error);
       toast({
         title: 'Erreur',
-        description: 'Impossible de vérifier le code promo',
+        description: error.message || 'Impossible de vérifier le code promo',
         variant: 'destructive',
       });
     } finally {
       setIsApplyingPromo(false);
     }
   };
+
+  useEffect(() => {
+    const savedCode = localStorage.getItem('promoCode');
+    if (savedCode) {
+      setPromoCode(savedCode);
+      handleApplyPromoCode(savedCode);
+    }
+  }, []);
 
   if (items.length === 0) {
     return (
@@ -339,7 +351,7 @@ const CheckoutPage = () => {
                     disabled={!!appliedPromoCode}
                   />
                   <Button
-                    onClick={handleApplyPromoCode}
+                    onClick={() => handleApplyPromoCode()}
                     disabled={isApplyingPromo || !promoCode || !!appliedPromoCode}
                     variant="outline"
                   >

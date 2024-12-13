@@ -28,25 +28,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
-
+  
   return (
     <html lang="fr" className="h-full">
       <head>
         {/* Balises méta essentielles */}
-        <title>bisou rivage - Marketplace de Photographies d'Artistes Français</title>
-        <meta name="description" content="Découvrez et achetez des photographies de paysages français réalisées par de jeunes artistes diplômés. Bisourivage est votre marketplace dédiée à l'art photographique français." />
+        <title>Bisou Rivage : Photographie d'art · Galerie Art Française · Achat Photo en ligne</title>
+        <meta name="description" content="  Des photos exclusives en tirages limités et numérotés par de jeunes Artistes et Designers, découvrez l'univers de Bisou Rivage !" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
 
         {/* Balises Open Graph pour les réseaux sociaux */}
-        <meta property="og:title" content="bisou rivage - Marketplace de Photographies d'Artistes Français" />
-        <meta property="og:description" content="Découvrez et achetez des photographies de paysages français réalisées par de jeunes artistes diplômés." />
+        <meta property="og:title" content="Bisou Rivage : Photographie d'art · Galerie Art Française · Achat Photo en ligne" />
+        <meta property="og:description" content="  Des photos exclusives en tirages limités et numérotés par de jeunes Artistes et Designers, découvrez l'univers de Bisou Rivage !" />
         <meta property="og:image" content="https://bisourivage.fr/images/og-image.jpg" />
         <meta property="og:url" content="https://bisourivage.fr" />
         <meta property="og:type" content="website" />
 
         {/* Balises Twitter Card */}
-        <meta name="twitter:title" content="BisouRivage - Marketplace de Photographies d'Artistes Français" />
-        <meta name="twitter:description" content="Découvrez et achetez des photographies de paysages français réalisées par de jeunes artistes diplômés." />
+        <meta name="twitter:title" content="Bisou Rivage : Photographie d'art · Galerie Art Française · Achat Photo en ligne" />
+        <meta name="twitter:description" content="  Des photos exclusives en tirages limités et numérotés par de jeunes Artistes et Designers, découvrez l'univers de Bisou Rivage !" />
         <meta name="twitter:image" content="https://bisourivage.fr/images/og-image.jpg" />
         <meta name="twitter:card" content="summary_large_image" />
 

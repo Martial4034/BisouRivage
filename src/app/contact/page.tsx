@@ -11,6 +11,16 @@ export default function Contact() {
       <div className="text-center max-w-md space-y-8">
         <h1 className="text-4xl font-bold text-gray-800 mb-6">Contactez-nous</h1>
         
+        {/* Description */}
+        <div className="mb-12 space-y-8 max-w-xl">
+          <p className="text-gray-600 leading-relaxed">
+            Nous sommes de jeunes artistes et designers tout juste diplômés. <br />
+            Pour nous, Bisou Rivage est une plage où s'échouent les images qui nous habitent. <br />
+            Des souvenirs vagues qui nous relient et qui, grâce à vous, prennent vie. <br />
+            Ce sont des fragments à suspendre ou à offrir, des histoires qui nous emportent sans bouger.
+          </p>
+        </div>
+        
         {/* Email */}
         <div className="flex flex-col items-center space-y-2">
           <Mail className="w-6 h-6 text-gray-600" />

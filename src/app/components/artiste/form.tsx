@@ -68,11 +68,12 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
   const { register: registerArtisteName, handleSubmit: handleSubmitArtisteName, formState: { errors: errorsArtisteName },} = useForm<{ artiste_name: string }>({ resolver: zodResolver(artisteNameSchema),});
 
   const sizesWithDescription = [
-    { size: '10x15 cm', description: '10x15 cm (Carte Postale)' },
-    { size: '20x30 cm', description: '20x30 cm (A4)' },
-    { size: '30x40 cm', description: '30x40 cm (A3)' },
-    { size: '50x70 cm', description: '50x70 cm (Grand Format)' }
+    { size: '10x15 cm', description: 'Carte Postale (10x15) 5€ A6' },
+    { size: '20x30 cm', description: 'Petit Format (20x30)  30€ A4' },
+    { size: '30x40 cm', description: 'Moyen format (30x40) 60€ A3' },
+    { size: '40x60 cm', description: 'Grand format (40x60) 120€ A2' }
   ];
+
 
   useEffect(() => {
     const fetchProductData = async () => {
