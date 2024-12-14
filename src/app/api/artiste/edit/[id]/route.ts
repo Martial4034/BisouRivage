@@ -33,11 +33,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const sizes = JSON.parse(formData.get('sizes') as string);
 
     // Nettoyage des formats
-    const cleanedSizes = sizes.map((sizeObj: { size: string, price: number, stock: number }) => ({
-      size: sizeObj.size,
-      price: sizeObj.price,
-      stock: sizeObj.stock,
-    }));
+    const cleanedSizes = sizes.map((sizeObj: { size: string, price: number, stock: number }) => {
+      // On récupère l'initialStock existant pour cette taille
+      const existingSize = existingData?.sizes.find((s: any) => s.size === sizeObj.size);
+      return {
+        size: sizeObj.size,
+        price: sizeObj.price,
+        stock: sizeObj.stock,
+        initialStock: existingSize?.initialStock || sizeObj.stock, // Garde l'initialStock existant
+        nextSerialNumber: existingSize?.nextSerialNumber || 1,
+      };
+    });
 
     // Collect all images (new files or existing links)
     const imageLinks: { id: number, link: string }[] = [];

@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     const artisteName = formData.get("artiste_name") as string;
     const description = formData.get("description") as string;
     const format = formData.get("format") as string;
-    const sizes = JSON.parse(formData.get("sizes") as string); // Récupérer les tailles avec stock et prix
+    const sizes = JSON.parse(formData.get("sizes") as string); // R��cupérer les tailles avec stock et prix
     const compressionQuality = parseInt(formData.get("compression_quality") as string) || 80;
 
     const cleanedSizes = sizes.map(
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
         size: sizeObj.size,
         price: sizeObj.price,
         stock: sizeObj.stock,
+        initialStock: sizeObj.stock,
         nextSerialNumber: 1,
       })
     );
