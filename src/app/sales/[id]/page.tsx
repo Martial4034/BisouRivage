@@ -1,41 +1,43 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { useCart } from '@/app/hooks/use-cart';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { Skeleton } from '@/app/components/ui/skeleton';
-import { Button } from '@/app/components/ui/button';
-import Image from 'next/image';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/app/firebase';
-import { useToast } from '@/app/hooks/use-toast';
+import * as React from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { useCart } from "@/app/hooks/use-cart";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { Skeleton } from "@/app/components/ui/skeleton";
+import { Button } from "@/app/components/ui/button";
+import Image from "next/image";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/app/firebase";
+import { useToast } from "@/app/hooks/use-toast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/app/components/ui/tooltip";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from '@/app/components/ui/carousel';
-import { useMediaQuery } from 'react-responsive';
-import useEmblaCarousel from 'embla-carousel-react';
-import Head from 'next/head';
+} from "@/app/components/ui/carousel";
+import { useMediaQuery } from "react-responsive";
+import useEmblaCarousel from "embla-carousel-react";
+import Head from "next/head";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/app/components/ui/accordion";
-import { Gift } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip";
-import Link from "next/link";
 import PromotionalBanner from "@/app/components/PromotionalBanner";
 
 // Interfaces importées
-import { ImageFirestoreData, ImageData, BaseCartItem } from '@/app/types';
+import { ImageFirestoreData, ImageData } from "@/app/types";
 
 export default function ImageDetails({ params }: { params: { id: string } }) {
   const [imageData, setImageData] = useState<ImageData | null>(null);
@@ -54,27 +56,32 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
   // Référence pour Embla Carousel
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false });
 
+  // Ajouter cet état avec les autres états au début du composant
+  const [frameOption, setFrameOption] = useState<"avec" | "sans">("avec");
+
   useEffect(() => {
     // Fonction pour récupérer les données de l'image
     const fetchImageData = async () => {
       try {
-        const docRef = doc(db, 'uploads', params.id);
+        const docRef = doc(db, "uploads", params.id);
         const docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
-          router.push('/404');
+          router.push("/404");
           return;
         }
 
         const data = docSnap.data() as ImageFirestoreData;
         if (!data) {
-          router.push('/404');
+          router.push("/404");
           return;
         }
 
         // Convertir le Timestamp en date formatée
         const createdAtDate = data.createdAt.toDate();
-        const createdAtFormatted = format(createdAtDate, 'dd MMMM yyyy', { locale: fr });
+        const createdAtFormatted = format(createdAtDate, "dd MMMM yyyy", {
+          locale: fr,
+        });
 
         setImageData({
           artisteEmail: data.artisteEmail,
@@ -89,12 +96,13 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
         });
 
         // Sélectionner automatiquement la première taille disponible en stock
-        const availableSize = data.sizes.find((size) => size.stock > 0) || data.sizes[0];
+        const availableSize =
+          data.sizes.find((size) => size.stock > 0) || data.sizes[0];
         setSelectedSize(availableSize.size);
         setSelectedPrice(availableSize.price);
       } catch (error) {
-        console.error('Error fetching document:', error);
-        router.push('/404');
+        console.error("Error fetching document:", error);
+        router.push("/404");
       }
       setIsLoading(false);
     };
@@ -104,7 +112,7 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     if (emblaApi) {
-      emblaApi.on('select', () => {
+      emblaApi.on("select", () => {
         setSelectedImageIndex(emblaApi.selectedScrollSnap());
       });
     }
@@ -112,22 +120,29 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
 
   const handleAddToCart = () => {
     if (!imageData || !selectedSize || !selectedPrice) {
+      console.error("Veuillez sélectionner un format.");
       return;
     }
 
-    const selectedFormat = imageData.sizes.find((size) => size.size === selectedSize);
+    const selectedFormat = imageData.sizes.find(
+      (size) => size.size === selectedSize
+    );
 
-    const product: BaseCartItem = {
+    const product = {
       id: params.id,
       name: `Image ${params.id}`,
       price: selectedPrice,
-      image: imageData.images[selectedImageIndex]?.link || '',
+      image: imageData.images[selectedImageIndex]?.link || "",
       format: selectedSize,
+      frameOption: frameOption, // Ajout de l'option de cadre
       quantity: 1,
       stock: selectedFormat?.stock || 0,
       artisteName: imageData.artisteName,
       artisteEmail: imageData.artisteEmail,
-      artisteId: imageData.artisteId
+      artisteId: imageData.artisteId,
+      serialNumber:
+        selectedFormat?.nextSerialNumber || "SerailNumber Introuvable",
+      initialStock: selectedFormat?.initialStock || "InitialStock Introuvable",
     };
 
     addItem(product);
@@ -157,7 +172,10 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
           </div>
 
           {/* Section Détails Skeleton */}
-          <div className="flex-1 border-2 border-gray-300 p-6 rounded-none shadow" style={{ height: '400px' }}>
+          <div
+            className="flex-1 border-2 border-gray-300 p-6 rounded-none shadow"
+            style={{ height: "400px" }}
+          >
             <Skeleton className="h-8 mb-4" />
             <Skeleton className="h-4 mb-2" />
             <Skeleton className="h-4 mb-2" />
@@ -175,7 +193,7 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
   }
 
   // Vérifier si le format est vertical
-  const isVertical = imageData.format.toLowerCase() === 'vertical';
+  const isVertical = imageData.format.toLowerCase() === "vertical";
 
   // Dimensions based on format
   const mainImageHeight = isVertical ? 625 : 400; // 16:9 aspect ratio for horizontal images
@@ -185,12 +203,20 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
   return (
     <>
       <Head>
-        <title>{params.id} - {imageData.artisteName} - BisouRivage</title>
+        <title>
+          {params.id} - {imageData.artisteName} - BisouRivage
+        </title>
         <meta name="description" content={imageData.description} />
-        <meta property="og:title" content={`${params.id} - ${imageData.artisteName} - BisouRivage`} />
+        <meta
+          property="og:title"
+          content={`${params.id} - ${imageData.artisteName} - BisouRivage`}
+        />
         <meta property="og:description" content={imageData.description} />
-        <meta property="og:image" content={imageData.images[0]?.link || ''} />
-        <meta property="og:url" content={`https://bisourivage.fr/sales/${params.id}`} />
+        <meta property="og:image" content={imageData.images[0]?.link || ""} />
+        <meta
+          property="og:url"
+          content={`https://bisourivage.fr/sales/${params.id}`}
+        />
       </Head>
 
       <PromotionalBanner />
@@ -206,13 +232,19 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
                   <CarouselContent>
                     {imageData.images.map((image, index) => (
                       <CarouselItem key={index}>
-                        <div className={`relative w-full ${isVertical ? 'h-[625px]' : 'h-[300px]'}`}>
+                        <div
+                          className={`relative w-full ${
+                            isVertical ? "h-[625px]" : "h-[300px]"
+                          }`}
+                        >
                           <Image
                             src={image.link}
                             alt={`Image ${index + 1}`}
                             fill
-                            sizes={`(max-width: 768px) 100vw, ${isVertical ? '400px' : '600px'}`}
-                            style={{ objectFit: 'cover' }}
+                            sizes={`(max-width: 768px) 100vw, ${
+                              isVertical ? "400px" : "600px"
+                            }`}
+                            style={{ objectFit: "cover" }}
                             className="shadow-md"
                           />
                         </div>
@@ -226,7 +258,9 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
                     <div
                       key={index}
                       className={`h-1 w-6 rounded-full cursor-pointer ${
-                        selectedImageIndex === index ? 'bg-black' : 'bg-gray-300'
+                        selectedImageIndex === index
+                          ? "bg-black"
+                          : "bg-gray-300"
                       }`}
                       onClick={() => handleImageClick(index)}
                     ></div>
@@ -241,30 +275,36 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
                   style={{ width: mainImageWidth, height: mainImageHeight }}
                 >
                   <Image
-                    src={imageData.images[selectedImageIndex]?.link || ''}
+                    src={imageData.images[selectedImageIndex]?.link || ""}
                     alt={`Image ${selectedImageIndex + 1}`}
                     fill
                     sizes={`${mainImageWidth}px`}
-                    style={{ objectFit: 'cover' }}
+                    style={{ objectFit: "cover" }}
                     className="shadow-md transition-transform duration-200 ease-in-out transform hover:scale-105"
                   />
                 </div>
 
                 {/* Vignettes */}
-                <div className={`mt-4 grid ${isVertical ? 'grid-cols-3 gap-2' : 'grid-cols-4 gap-2'}`}>
+                <div
+                  className={`mt-4 grid ${
+                    isVertical ? "grid-cols-3 gap-2" : "grid-cols-4 gap-2"
+                  }`}
+                >
                   {imageData.images.map((image, index) => (
                     <div
                       key={index}
-                      className={`relative cursor-pointer ${!isVertical ? 'border-2 border-gray-300' : 'border-none'} overflow-hidden transition-shadow duration-200 ease-in-out hover:shadow-lg`}
+                      className={`relative cursor-pointer ${
+                        !isVertical ? "border-2 border-gray-300" : "border-none"
+                      } overflow-hidden transition-shadow duration-200 ease-in-out hover:shadow-lg`}
                       onClick={() => handleImageClick(index)}
-                      style={{ width: '100%', height: thumbnailHeight }}
+                      style={{ width: "100%", height: thumbnailHeight }}
                     >
                       <Image
                         src={image.link}
                         alt={`Thumbnail ${index + 1}`}
                         fill
                         sizes="100%"
-                        style={{ objectFit: 'cover' }}
+                        style={{ objectFit: "cover" }}
                         className=""
                       />
                     </div>
@@ -276,12 +316,16 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
 
           {/* Section Détails */}
           <div className="flex-1 border-2 border-gray-300 p-6 rounded-none shadow">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Titre : {params.id}</h2>
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+              Titre : {params.id}
+            </h2>
             <p className="text-md text-gray-600 mb-2">
-              Artiste : <span className="font-semibold">{imageData.artisteName}</span>
+              Artiste :{" "}
+              <span className="font-semibold">{imageData.artisteName}</span>
             </p>
             <p className="text-md text-gray-600 mb-2">
-              Date : <span className="font-semibold">{imageData.createdAt}</span>
+              Date :{" "}
+              <span className="font-semibold">{imageData.createdAt}</span>
             </p>
 
             <p className="text-gray-700 mb-4">{imageData.description}</p>
@@ -294,11 +338,12 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
               </p>
               <p className="flex items-center gap-2">
                 <span className="text-gray-700 font-bold">→</span>
-                Tirages limité en {
-                  selectedSize 
-                    ? imageData.sizes.find(s => s.size === selectedSize)?.initialStock 
-                    : '...'
-                } exemplaires
+                Tirages limité en{" "}
+                {selectedSize
+                  ? imageData.sizes.find((s) => s.size === selectedSize)
+                      ?.initialStock
+                  : "..."}{" "}
+                exemplaires
               </p>
               <p className="flex items-center gap-2">
                 <span className="text-gray-700 font-semibold">→</span>
@@ -306,11 +351,48 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
               </p>
             </div>
 
-            <p className="text-lg font-semibold text-gray-800 mb-2">Disponible en plusieurs tailles</p>
+            {/* Sélection du cadre */}
+            <div className="mb-6">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => setFrameOption("sans")}
+                  variant={frameOption === "sans" ? "default" : "outline"}
+                  className={`flex items-center justify-center ${
+                    frameOption === "sans"
+                      ? "bg-transparent text-black border-[1.2px] border-black"
+                      : "bg-black text-white"
+                  } hover:bg-gray-600 transition-colors duration-200`}
+                >
+                  Sans cadre
+                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        disabled={true}
+                        variant="outline"
+                        className="flex items-center justify-center bg-gray-300 text-gray-500 cursor-not-allowed"
+                      >
+                        Avec cadre
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        L&apos;option d&apos;achat avec cadre arrive bientôt !
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            </div>
+
+            <p className="text-lg font-semibold text-gray-800 mb-2">
+              Disponible en plusieurs tailles
+            </p>
 
             {/* Sélection de Format */}
             <div className="mb-6">
-              <p className="text-md font-semibold mb-2">Sélectionnez un format :</p>
+              <p className="text-sm mb-2">Sélectionnez un format :</p>
               <div className="flex flex-wrap gap-2">
                 {imageData.sizes.map((size) => (
                   <Button
@@ -321,16 +403,16 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
                       setIsAdded(false);
                     }}
                     disabled={size.stock <= 0}
-                    variant={selectedSize === size.size ? 'default' : 'outline'}
+                    variant={selectedSize === size.size ? "default" : "outline"}
                     className={`flex items-center justify-center ${
                       size.stock <= 0
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                         : selectedSize === size.size
-                        ? 'bg-transparent text-black border-2 border-black'
-                        : 'bg-black text-white'
+                        ? "bg-transparent text-black border-[1.2px] border-black"
+                        : "bg-black text-white"
                     } hover:bg-gray-600 transition-colors duration-200`}
                   >
-                    {size.size} {size.stock <= 0 && '(Rupture de stock)'}
+                    {size.size} {size.stock <= 0 && "(Rupture de stock)"}
                   </Button>
                 ))}
               </div>
@@ -342,32 +424,34 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
               onClick={() => {
                 handleAddToCart();
                 toast({
-                  title: 'Produit ajouté',
+                  title: "Produit ajouté",
                   description: `Format sélectionné : ${selectedSize}`,
-                  variant: 'default',
+                  variant: "default",
                 });
               }}
               disabled={!selectedSize || isAdded}
-              variant={isAdded ? 'secondary' : 'default'}
+              variant={isAdded ? "secondary" : "default"}
               className={`w-full ${
-                !selectedSize ? 'cursor-not-allowed opacity-50' : ''
+                !selectedSize ? "cursor-not-allowed opacity-50" : ""
               } ${
-                isAdded ? 'bg-gray-500' : 'bg-black'
+                isAdded ? "bg-gray-500" : "bg-black"
               } hover:bg-gray-700 transition-colors duration-200`}
             >
-              {isAdded ? 'Ajouté au panier' : 'Ajouter au panier'}
+              {isAdded ? "Ajouté au panier" : "Ajouter au panier"}
             </Button>
 
             {/* Message sur la disponibilité */}
             {selectedSize && (
               <div className="mt-4 text-sm italic text-center">
                 {(() => {
-                  const selectedSizeData = imageData.sizes.find(s => s.size === selectedSize);
+                  const selectedSizeData = imageData.sizes.find(
+                    (s) => s.size === selectedSize
+                  );
                   if (!selectedSizeData) return null;
 
                   const { nextSerialNumber, initialStock } = selectedSizeData;
                   const remainingStock = selectedSizeData.stock;
-                  
+
                   if (nextSerialNumber === 1) {
                     return (
                       <p className="text-green-600 font-medium">
@@ -377,14 +461,16 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
                   } else if (remainingStock >= initialStock / 2) {
                     return (
                       <p className="text-blue-600 font-medium">
-                        Vous obtiendrez l'exemplaire n°{nextSerialNumber} dans le format sélectionné et 
-                        serez parmi les {Math.ceil(initialStock / 2)} premiers
+                        Vous obtiendrez l&apos;exemplaire n°{nextSerialNumber}.
+                        Vous serez parmi les {Math.ceil(initialStock / 2)}{" "}
+                        premiers
                       </p>
                     );
                   } else {
                     return (
                       <p className="text-orange-600 font-medium">
-                        Plus que {remainingStock} exemplaires disponibles dans le format sélectionné
+                        Plus que {remainingStock} exemplaires disponibles dans
+                        le format sélectionné
                       </p>
                     );
                   }
@@ -401,33 +487,40 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
                   </AccordionTrigger>
                   <AccordionContent className="text-sm text-gray-600 space-y-4">
                     <p>
-                      Comme nous manipulons des œuvres d'art fragiles, nous emballons soigneusement toutes les pièces 
-                      et utilisons uniquement un service signé pour toutes nos expéditions.
+                      Comme nous manipulons des œuvres d'art fragiles, nous
+                      emballons soigneusement toutes les pièces et utilisons
+                      uniquement un service signé pour toutes nos expéditions.
                     </p>
-                    
+
                     <p>
-                      Toutes les impressions A3 et A4 sont expédiées dans des boîtes de présentation à plat 
-                      et les impressions A2 sont expédiées dans des tubes. Nous avons fait concevoir les tubes 
-                      spécifiquement pour expédier cette tailles et ils sont beaucoup plus larges que les tubes 
-                      habituels afin qu'ils ne conservent pas leur courbure.
+                      Toutes les impressions A3 et A4 sont expédiées dans des
+                      boîtes de présentation à plat et les impressions A2 sont
+                      expédiées dans des tubes. Nous avons fait concevoir les
+                      tubes spécifiquement pour expédier cette tailles et ils
+                      sont beaucoup plus larges que les tubes habituels afin
+                      qu'ils ne conservent pas leur courbure.
                     </p>
-                    
+
                     <p>
-                      La livraison en France prend 2 à 3 jours ouvrables, en Europe environ 5 jours et dans 
-                      le reste du monde 7 à 10 jours. Veuillez noter que les délais de livraison sont 
+                      La livraison en France prend 2 à 3 jours ouvrables, en
+                      Europe environ 5 jours et dans le reste du monde 7 à 10
+                      jours. Veuillez noter que les délais de livraison sont
                       actuellement variables.
                     </p>
-                    
+
                     <div className="space-y-2">
                       <p>Expédition en France : 15€</p>
                       <p>Expédition dans l'UE : 65€*</p>
                       <p>Reste du monde : 65€*</p>
-                      <p>Retrait sur rendez-vous à Saint-Etienne au 32 Rue de la Résistance</p>
+                      <p>
+                        Retrait sur rendez-vous à Saint-Etienne au 32 Rue de la
+                        Résistance
+                      </p>
                     </div>
-                    
+
                     <p className="italic">
-                      * Des droits de douane et des droits supplémentaires peuvent s'appliquer 
-                      et sont à la charge de l'acheteur.
+                      * Des droits de douane et des droits supplémentaires
+                      peuvent s'appliquer et sont à la charge de l'acheteur.
                     </p>
                   </AccordionContent>
                 </AccordionItem>

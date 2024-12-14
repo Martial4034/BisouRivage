@@ -41,3 +41,41 @@
     @apply font-heading;
   }
 }
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 20s linear infinite;
+  display: inline-flex;
+  white-space: nowrap;
+} 
+
+@keyframes scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-scroll {
+  animation: scroll 60s linear infinite;
+}
+
+.animate-scroll2 {
+  animation: scroll 60s linear infinite;
+  animation-delay: -30s;
+}
+
+/* Arrêter toutes les animations au survol du conteneur */
+.promotional-banner:hover .animate-scroll,
+.promotional-banner:hover .animate-scroll2 {
+  animation-play-state: paused;
+}

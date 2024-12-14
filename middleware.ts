@@ -29,7 +29,13 @@ export async function middleware(req: NextRequest) {
       if (isApiRoute) {
         return new NextResponse(
           JSON.stringify({ error: 'Forbidden' }),
-          { status: 403, headers: { 'Content-Type': 'application/json' } }
+          { 
+            status: 555, 
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-User-Email': token.email as string
+            } 
+          }
         );
       } else {
         url.pathname = '/';

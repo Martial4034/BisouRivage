@@ -62,8 +62,15 @@ export async function POST(req: NextRequest) {
       // Extraire les informations des produits
       const products = lineItems.map((item: any) => {
         const productMetadata = item.price?.product?.metadata || {};
-        const identificationNumbersMap = JSON.parse(productMetadata.identificationNumbers || '[]');
+        let identificationNumbersMap = [];
         
+        try {
+          identificationNumbersMap = JSON.parse(productMetadata.identificationNumbers || '[]');
+        } catch (error) {
+          console.error('Erreur parsing identificationNumbers:', error);
+          identificationNumbersMap = [];
+        }
+
         return {
           productId: productMetadata.id || "unknown",
           price: ((item.price?.unit_amount ?? 0) * (item.quantity ?? 0)) / 100,
@@ -75,7 +82,10 @@ export async function POST(req: NextRequest) {
           name: item.price?.product?.name || "unknown",
           format: productMetadata.format || "unknown",
           serialNumber: productMetadata.serialNumber || "0",
-          identificationNumbersMap: identificationNumbersMap,
+          identificationNumbers: identificationNumbersMap.map((item: any) => ({
+            serialNumber: item.serialNumber,
+            identificationNumber: item.identificationNumber
+          }))
         };
       });
 
@@ -135,6 +145,7 @@ export async function POST(req: NextRequest) {
 
           const currentStock = sizes[formatIndex].stock;
           const currentSerialNumber = sizes[formatIndex].nextSerialNumber || 1;
+          const currentSize = sizes[formatIndex].size;
 
           // Générer les numéros de série pour cette commande
           const generatedSerialNumbers = Array.from({ length: product.quantity }, (_, i) => 
@@ -145,12 +156,17 @@ export async function POST(req: NextRequest) {
           sizes[formatIndex].stock = currentStock - product.quantity;
           sizes[formatIndex].nextSerialNumber = currentSerialNumber + product.quantity;
 
-
+          // Créer un objet pour stocker les identificationNumbers avec la taille
+          const identificationNumbersWithSize = product.identificationNumbers.map((idNum: any) => ({
+            ...idNum,
+            size: currentSize,
+            productId: product.productId
+          }));
 
           // Mettre à jour le document avec les sizes et serialNumbers
           transaction.update(productRef, { 
             sizes,
-            
+            identificationNumbers: FieldValue.arrayUnion(...identificationNumbersWithSize)
           });
 
           return generatedSerialNumbers;

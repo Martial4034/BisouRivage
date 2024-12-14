@@ -1,5 +1,3 @@
-// src/app/api/auth/verify-token/route.ts
-
 import { NextRequest, NextResponse } from 'next/server';
 import { firestoreAdmin, Timestamp } from '@/app/firebaseAdmin';
 
@@ -27,7 +25,7 @@ export async function POST(req: NextRequest) {
 
     const email = tokenData.email;
 
-    // Supprimer le token après utilisation pour éviter la réutilisation
+    // Supprimer le token après vérification et validation pour éviter la réutilisation
     await firestoreAdmin.collection('otpTokens').doc(token).delete();
 
     return NextResponse.json({ email }, { status: 200 });

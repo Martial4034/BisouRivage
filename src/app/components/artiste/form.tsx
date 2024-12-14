@@ -80,7 +80,11 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
       if (!session) return;
   
       if (session.user.role !== 'artiste') {
-        router.push('/403');
+        // Store email in session
+        if (session.user.email) {
+          sessionStorage.setItem('userEmail', session.user.email);
+        }
+        router.push('/555');
         return;
       }
   
@@ -228,6 +232,7 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
       if (!response.ok) throw new Error(result.message || "L'upload ou la mise à jour a échoué.");
 
       setSuccess(editId ? 'Mise à jour réussie!' : 'Images et formats uploadés avec succès!');
+      router.push('/dashboard/artiste/manage');
     } catch (error: any) {
       setError(error.message);
     } finally {

@@ -87,11 +87,13 @@ export async function POST(req: NextRequest) {
 
       const item_name_format = item.name + ' (' + item.format + ')';
 
-      // Générer les identificationNumbers en fonction de la quantité
+      // Modifier la génération des identificationNumbers
       const identificationNumbersMap = Array.from(
         { length: item.quantity },
         (_, index) => ({
-          [generateIdentificationNumber()]: (sizeInfo.nextSerialNumber + index).toString()
+          serialNumber: (sizeInfo.nextSerialNumber + index).toString().padStart(2, '0'),
+          identificationNumber: generateIdentificationNumber(),
+          size: sizeInfo.size
         })
       );
 
@@ -127,7 +129,7 @@ export async function POST(req: NextRequest) {
       automatic_tax: { enabled: true },
       billing_address_collection: 'required',
       shipping_address_collection: {
-        allowed_countries: ['FR'],
+        allowed_countries: ['FR', 'AE'],
       },
       customer_update: {
         shipping: 'auto',

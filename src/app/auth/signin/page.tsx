@@ -36,12 +36,20 @@ function SigninContent() {
 
   useEffect(() => {
     const fromToken = searchParams.get('fromToken');
-
+    const emailParam = searchParams.get('email');
+    
     if (fromToken === 'true') {
       const storedEmail = window.localStorage.getItem('emailForSignIn');
       if (storedEmail) {
         setEmail(storedEmail);
         setIsOtpDialogOpen(true);
+      }
+    }
+
+    if (emailParam) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (emailRegex.test(emailParam)) {
+        setEmail(emailParam);
       }
     }
   }, [searchParams]);
@@ -50,7 +58,7 @@ function SigninContent() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      let redirectUrl = sessionStorage.getItem('redirectUrl') || '/';
+      let redirectUrl = localStorage.getItem('redirectUrl') || '/';
       if (redirectUrl === '/auth/signin-token') {
       redirectUrl = '/';
       }

@@ -14,7 +14,7 @@ const Countdown = ({ onExpire }: CountdownProps) => {
   const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
-    const targetDate = new Date('2024-12-10T12:00:00');
+    const targetDate = new Date('2024-12-20T12:00:00');
 
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
@@ -61,9 +61,9 @@ const Countdown = ({ onExpire }: CountdownProps) => {
 
   return (
     <div className="flex items-center justify-center min-h-[50vh]">
-      <div className="text-6xl font-light text-center">
-        <h2 className="mt-6 text-2xl mb-12 font-semibold">La saison 1 arrive bientôt.</h2>
-        <div className="flex gap-6">
+      <div className="text-4xl md:text-6xl font-light text-center px-4">
+        <h2 className="mt-6 text-xl md:text-2xl mb-8 md:mb-12 font-semibold">La saison 1 arrive bientôt.</h2>
+        <div className="flex gap-2 md:gap-6">
           <div>
             <span className="font-medium">{String(timeLeft.days).padStart(2, '0')}</span>
             <span className="text-gray-500">j</span>
@@ -84,7 +84,6 @@ const Countdown = ({ onExpire }: CountdownProps) => {
             <span className="text-gray-500">s</span>
           </div>
         </div>
-        
       </div>
     </div>
   );

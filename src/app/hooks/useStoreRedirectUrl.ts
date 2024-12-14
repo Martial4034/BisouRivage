@@ -9,8 +9,9 @@ export function useStoreRedirectUrl() {
   useEffect(() => {
     const authPaths = ['/auth/signin', '/auth/signin-confirm'];
     if (!authPaths.includes(pathname)) {
-      if (pathname !== null) {
+      if (pathname !== null && !/^\d+$/.test(pathname.slice(1))) {
         sessionStorage.setItem('redirectUrl', pathname);
+        localStorage.setItem('redirectUrl', pathname);
       }
     }
   }, [pathname]);

@@ -53,7 +53,7 @@ export interface ImageFirestoreData {
   format: string;
   images: { id: number; link: string }[];
   mainImage: string;
-  sizes: { size: string; price: number; stock: number }[];
+  sizes: { size: string; price: number; stock: number; nextSerialNumber: number; identificationNumbers: number[]; initialStock: number }[];
 }
 
 export interface ImageData {
@@ -65,7 +65,7 @@ export interface ImageData {
   format: string;
   images: { id: number; link: string }[];
   mainImage: string;
-  sizes: { size: string; price: number; stock: number }[];
+  sizes: { size: string; price: number; stock: number; nextSerialNumber: number; identificationNumbers: number[]; initialStock: number }[];
 }
 
 // Ajoutez ou modifiez le type pour les tailles

@@ -43,23 +43,25 @@ function VerificationForm() {
     setIsLoading(true);
     setError('');
 
+    console.log("Numéro à vérifier:", number);
     try {
       const response = await fetch('/api/verification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ certificateNumber: number }),
+        body: JSON.stringify({ identificationNumber: number }),
       });
 
       const data = await response.json();
+      console.log("Réponse de l'API:", data);
 
       if (!response.ok) {
         throw new Error(data.message || 'Une erreur est survenue');
       }
 
-      if (data.product) {
-        setVerifiedProduct(data.product);
+      if (data.productInfo) {
+        setVerifiedProduct(data.productInfo);
       }
     } catch (err: any) {
       setError(err.message);
