@@ -15,6 +15,12 @@ export interface Product {
   status?: string; // Statut du produit pour l'artiste
   serialNumber?: string;
   serialNumbers?: string[];
+  frame?: {
+    optionId: string;
+    name: string;
+    color: string;
+    price: number;
+  };
 }
 
 export interface OrderFirestoreData {
@@ -53,7 +59,7 @@ export interface ImageFirestoreData {
   format: string;
   images: { id: number; link: string }[];
   mainImage: string;
-  sizes: { size: string; price: number; stock: number; nextSerialNumber: number; identificationNumbers: number[]; initialStock: number }[];
+  sizes: { size: string; price: number; stock: number; nextSerialNumber: number; identificationNumbers: number[]; initialStock: number; equivalentFrameSize: string }[];
 }
 
 export interface ImageData {
@@ -65,7 +71,7 @@ export interface ImageData {
   format: string;
   images: { id: number; link: string }[];
   mainImage: string;
-  sizes: { size: string; price: number; stock: number; nextSerialNumber: number; identificationNumbers: number[]; initialStock: number }[];
+  sizes: { size: string; price: number; stock: number; nextSerialNumber: number; identificationNumbers: number[]; initialStock: number; equivalentFrameSize: string }[];
 }
 
 // Ajoutez ou modifiez le type pour les tailles
@@ -88,4 +94,20 @@ interface OrderProduct {
   name: string;
   format: string;
   serialNumber: string;
+}
+
+// Nouvelle interface pour les cadres
+export interface Frame {
+  id: string;
+  size: string;
+  frameOptions: FrameOption[];
+  updatedAt: Timestamp;
+}
+
+export interface FrameOption {
+  name: string;
+  color: string;
+  imageUrl: string;
+  price: number;
+  available: boolean;
 }

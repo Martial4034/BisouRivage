@@ -29,7 +29,7 @@ export function TopNavBar() {
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  useInitializeCart();
+  const cartItems = useInitializeCart();
 
   if (isLoading) {
     // Display skeleton when loading

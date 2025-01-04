@@ -33,14 +33,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const sizes = JSON.parse(formData.get('sizes') as string);
 
     // Nettoyage des formats
-    const cleanedSizes = sizes.map((sizeObj: { size: string, price: number, stock: number }) => {
-      // On récupère l'initialStock existant pour cette taille
+    const cleanedSizes = sizes.map((sizeObj: { 
+      size: string;
+      equivalentFrameSize: string;
+      stock: number;
+    }) => {
+      // On récupère l'initialStock et nextSerialNumber existants pour cette taille
       const existingSize = existingData?.sizes.find((s: any) => s.size === sizeObj.size);
       return {
         size: sizeObj.size,
-        price: sizeObj.price,
+        equivalentFrameSize: sizeObj.equivalentFrameSize,
         stock: sizeObj.stock,
-        initialStock: existingSize?.initialStock || sizeObj.stock, // Garde l'initialStock existant
+        initialStock: existingSize?.initialStock || sizeObj.stock,
         nextSerialNumber: existingSize?.nextSerialNumber || 1,
       };
     });
@@ -71,7 +75,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       description,
       format,
       sizes: cleanedSizes,
-      images: imageLinks, // Mise à jour avec les nouveaux liens d'image
+      images: imageLinks,
       updatedAt: FieldValue.serverTimestamp(),
     });
 

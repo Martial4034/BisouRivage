@@ -9,9 +9,10 @@ import { fr } from "date-fns/locale";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { Button } from "@/app/components/ui/button";
 import Image from "next/image";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection } from "firebase/firestore";
 import { db } from "@/app/firebase";
 import { useToast } from "@/app/hooks/use-toast";
+import { CircularProgress } from '@mui/material';
 import {
   Tooltip,
   TooltipContent,
@@ -39,6 +40,132 @@ import PromotionalBanner from "@/app/components/PromotionalBanner";
 // Interfaces importées
 import { ImageFirestoreData, ImageData } from "@/app/types";
 
+// Ajout des interfaces pour les formats
+interface FrameOption {
+  name: string;
+  color: string;
+  imageUrl: string;
+  price: number;
+  available: boolean;
+}
+
+interface Format {
+  id: string;
+  size: string;
+  frameOptions: FrameOption[];
+}
+
+// Ajouter cette interface avec les autres
+interface ColorPoint {
+  color: string;
+  urlPoint: string;
+}
+
+// Ajouter ces constantes en haut du fichier
+const FRAME_STYLES = {
+  container: {
+    position: 'relative' as const,
+    width: '100%',
+    height: '100%',
+  },
+  frame: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 2,
+  },
+  image: {
+    position: 'absolute' as const,
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '70%',
+    height: '70%',
+    zIndex: 1,
+  }
+};
+
+// Composant de débogage
+const DebugInfo = ({ 
+  data, 
+  formats,
+  selectedSize,
+  selectedColor,
+  frameOption,
+  selectedFrame,
+  colorPoints,
+  error 
+}: { 
+  data: ImageData | null;
+  formats: Format[];
+  selectedSize: string | null;
+  selectedColor: string | null;
+  frameOption: "avec" | "sans";
+  selectedFrame: FrameOption | null;
+  colorPoints: ColorPoint[];
+  error?: string;
+}) => {
+  // Trouver le format équivalent pour la taille sélectionnée
+  const selectedSizeData = data?.sizes.find(s => s.size === selectedSize);
+  const equivalentFrameSize = selectedSizeData?.equivalentFrameSize;
+  const formatData = formats.find(f => f.size === equivalentFrameSize);
+
+  const debugData = {
+    "🎯 Sélections actuelles": {
+      "Taille sélectionnée": selectedSize,
+      "Taille équivalente cadre": equivalentFrameSize,
+      "Option de cadre": frameOption,
+      "Couleur sélectionnée": selectedColor,
+    },
+    "📦 Informations produit": {
+      "Format du produit": data?.format,
+      "Stock disponible": selectedSizeData ? {
+        "Taille": selectedSizeData.size,
+        "Stock initial": selectedSizeData.initialStock,
+        "Stock restant": selectedSizeData.stock,
+        "Prochain numéro": selectedSizeData.nextSerialNumber,
+      } : null,
+    },
+    "🎨 Couleurs disponibles": colorPoints.map(point => ({
+      color: point.color,
+      url: point.urlPoint
+    })),
+    "🖼️ Format correspondant": formatData ? {
+      "Taille": formatData.size,
+      "Options de cadre": formatData.frameOptions.map(option => ({
+        nom: option.name,
+        couleur: option.color,
+        prix: option.price,
+        disponible: option.available,
+        imageUrl: option.imageUrl
+      }))
+    } : null,
+    "🔍 Cadre sélectionné": selectedFrame ? {
+      nom: selectedFrame.name,
+      couleur: selectedFrame.color,
+      prix: selectedFrame.price,
+      imageUrl: selectedFrame.imageUrl
+    } : null,
+  };
+
+  return (
+    <div className="fixed top-4 right-4 p-4 bg-black/80 text-white rounded-lg max-w-lg max-h-[80vh] overflow-auto">
+      <h3 className="text-xl font-bold mb-2">Debug Info</h3>
+      {error && (
+        <div className="mb-4 p-2 bg-red-500/50 rounded">
+          <h4 className="font-bold">❌ Erreur:</h4>
+          <p>{error}</p>
+        </div>
+      )}
+      <pre className="text-xs whitespace-pre-wrap">
+        {JSON.stringify(debugData, null, 2)}
+      </pre>
+    </div>
+  );
+};
+
 export default function ImageDetails({ params }: { params: { id: string } }) {
   const [imageData, setImageData] = useState<ImageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,25 +186,99 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
   // Ajouter cet état avec les autres états au début du composant
   const [frameOption, setFrameOption] = useState<"avec" | "sans">("avec");
 
+  // États existants...
+  const [formats, setFormats] = useState<Format[]>([]);
+  const [isLoadingFormats, setIsLoadingFormats] = useState(true);
+  const [selectedFrame, setSelectedFrame] = useState<FrameOption | null>(null);
+  const [basePrice, setBasePrice] = useState<number>(0);
+  const [debugError, setDebugError] = useState<string>("");
+
+  // Ajouter ces états
+  const [colorPoints, setColorPoints] = useState<ColorPoint[]>([]);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [isLoadingColors, setIsLoadingColors] = useState(true);
+
+  // Ajouter cette fonction pour récupérer les points de couleur
+  const fetchColorPoints = async () => {
+    try {
+      console.log("🎨 Récupération des points de couleur...");
+      const colorDoc = await getDoc(doc(db, 'formats', 'couleurs'));
+      
+      if (!colorDoc.exists()) {
+        console.error("❌ Document des couleurs non trouvé");
+        return;
+      }
+
+      const colorData = colorDoc.data();
+      console.log("📊 Points de couleur récupérés:", colorData.colors);
+      setColorPoints(colorData.colors);
+    } catch (error) {
+      console.error("❌ Erreur lors de la récupération des couleurs:", error);
+    } finally {
+      setIsLoadingColors(false);
+    }
+  };
+
   useEffect(() => {
-    // Fonction pour récupérer les données de l'image
-    const fetchImageData = async () => {
+    const fetchData = async () => {
+      console.log("🚀 Démarrage du fetchData");
+      setIsLoading(true);
       try {
+        // Récupération des données du produit
+        console.log("📦 Récupération du produit:", params.id);
         const docRef = doc(db, "uploads", params.id);
         const docSnap = await getDoc(docRef);
 
         if (!docSnap.exists()) {
+          const error = "❌ Document non trouvé";
+          console.error(error);
+          setDebugError(error);
           router.push("/404");
           return;
         }
 
         const data = docSnap.data() as ImageFirestoreData;
+        console.log("📄 Données du produit:", data);
+
         if (!data) {
-          router.push("/404");
+          const error = "❌ Les données du produit sont vides";
+          setDebugError(error);
+          console.error(error);
           return;
         }
 
-        // Convertir le Timestamp en date formatée
+        // Validation des données requises
+        const hasRequiredFields = 
+          data.artisteName && 
+          data.format && 
+          data.images && 
+          data.sizes;
+
+        if (!hasRequiredFields) {
+          const error = "❌ Champs requis manquants dans les données du produit";
+          setDebugError(error);
+          console.error(error);
+          return;
+        }
+
+        // Récupération des formats
+        console.log("🎯 Récupération des formats");
+        const formatsSnapshot = await getDocs(collection(db, 'formats'));
+        const formatsData = formatsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Format[];
+
+        if (formatsData.length === 0) {
+          const error = "❌ Aucun format trouvé dans la base de données";
+          setDebugError(error);
+          console.error(error);
+          return;
+        }
+
+        console.log("📊 Formats récupérés:", formatsData);
+
+        // Traitement des données
         const createdAtDate = data.createdAt.toDate();
         const createdAtFormatted = format(createdAtDate, "dd MMMM yyyy", {
           locale: fr,
@@ -87,7 +288,7 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
           artisteEmail: data.artisteEmail,
           artisteId: data.artisteId,
           artisteName: data.artisteName,
-          createdAt: createdAtFormatted, // Date formatée
+          createdAt: createdAtFormatted,
           description: data.description,
           format: data.format,
           images: data.images,
@@ -95,19 +296,43 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
           sizes: data.sizes,
         });
 
-        // Sélectionner automatiquement la première taille disponible en stock
-        const availableSize =
-          data.sizes.find((size) => size.stock > 0) || data.sizes[0];
+        // Vérification des tailles disponibles
+        const availableSize = data.sizes.find((size) => size.stock > 0) || data.sizes[0];
+        if (!availableSize) {
+          const error = "❌ Aucune taille disponible pour ce produit";
+          setDebugError(error);
+          console.error(error);
+          return;
+        }
+
+        console.log("📏 Taille disponible trouvée:", availableSize);
         setSelectedSize(availableSize.size);
-        setSelectedPrice(availableSize.price);
-      } catch (error) {
-        console.error("Error fetching document:", error);
-        router.push("/404");
+
+        // Vérification du format correspondant
+        const formatData = formatsData.find(f => f.size === availableSize.equivalentFrameSize);
+        if (!formatData) {
+          const error = `❌ Format ${availableSize.equivalentFrameSize} non trouvé dans la base`;
+          setDebugError(error);
+          console.error(error);
+          return;
+        }
+
+        setFormats(formatsData);
+
+        // Ajouter l'appel pour récupérer les couleurs
+        await fetchColorPoints();
+        
+      } catch (error: unknown) {
+        const errorMessage = `🚨 Erreur lors du chargement: ${error instanceof Error ? error.message : 'Erreur inconnue'}`;
+        console.error(errorMessage);
+        setDebugError(errorMessage);
+      } finally {
+        setIsLoading(false);
+        setIsLoadingFormats(false);
       }
-      setIsLoading(false);
     };
 
-    fetchImageData();
+    fetchData();
   }, [params.id, router]);
 
   useEffect(() => {
@@ -118,35 +343,86 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
     }
   }, [emblaApi]);
 
-  const handleAddToCart = () => {
-    if (!imageData || !selectedSize || !selectedPrice) {
-      console.error("Veuillez sélectionner un format.");
-      return;
+  const handleAddToCart = async () => {
+    try {
+      if (!selectedSize) {
+        toast({
+          title: "Format requis",
+          description: "Veuillez sélectionner un format avant d'ajouter au panier",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (frameOption === "avec" && !selectedFrame) {
+        toast({
+          title: "Couleur de cadre requise",
+          description: "Veuillez sélectionner une couleur de cadre",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Vérifier le stock
+      const sizeData = imageData?.sizes.find(s => s.size === selectedSize);
+      if (!sizeData || sizeData.stock <= 0) {
+        toast({
+          title: "Stock épuisé",
+          description: "Ce format n'est plus disponible",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Créer l'item pour le panier
+      const cartItem = {
+        id: params.id,
+        size: selectedSize,
+        frameOption,
+        frameColor: frameOption === "avec" ? selectedFrame?.color : undefined,
+        quantity: 1
+      };
+
+      // Vérifier le prix avant l'ajout
+      const priceResponse = await fetch('/api/product/price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: params.id,
+          size: selectedSize,
+          frameOption,
+          frameColor: selectedFrame?.color
+        }),
+      });
+
+      if (!priceResponse.ok) {
+        throw new Error("Erreur lors de la vérification du prix");
+      }
+
+      const priceData = await priceResponse.json();
+      console.log("💰 Prix vérifié:", priceData);
+
+      // Ajouter au panier
+      addItem(cartItem);
+      setIsAdded(true);
+
+      toast({
+        title: "Ajouté au panier",
+        description: `${selectedSize} ${frameOption === "avec" ? `avec cadre ${selectedFrame?.name || ''}` : "sans cadre"}`,
+      });
+
+      setTimeout(() => {
+        setIsAdded(false);
+      }, 2000);
+
+    } catch (error) {
+      console.error("Erreur lors de l'ajout au panier:", error);
+      toast({
+        title: "Erreur",
+        description: "Une erreur est survenue lors de l'ajout au panier",
+        variant: "destructive",
+      });
     }
-
-    const selectedFormat = imageData.sizes.find(
-      (size) => size.size === selectedSize
-    );
-
-    const product = {
-      id: params.id,
-      name: `Image ${params.id}`,
-      price: selectedPrice,
-      image: imageData.images[selectedImageIndex]?.link || "",
-      format: selectedSize,
-      frameOption: frameOption, // Ajout de l'option de cadre
-      quantity: 1,
-      stock: selectedFormat?.stock || 0,
-      artisteName: imageData.artisteName,
-      artisteEmail: imageData.artisteEmail,
-      artisteId: imageData.artisteId,
-      serialNumber:
-        selectedFormat?.nextSerialNumber || "SerailNumber Introuvable",
-      initialStock: selectedFormat?.initialStock || "InitialStock Introuvable",
-    };
-
-    addItem(product);
-    setIsAdded(true);
   };
 
   const handleImageClick = (index: number) => {
@@ -156,8 +432,74 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
     }
   };
 
+  // Fonction pour calculer le prix total
+  const calculatePrice = () => {
+    console.log("💲 Calcul du prix - Données actuelles:", {
+      selectedSize,
+      frameOption,
+      selectedFrame
+    });
+    
+    if (!selectedSize) return 0;
+    
+    if (frameOption === "sans") {
+      const sizeData = imageData?.sizes.find(s => s.size === selectedSize);
+      console.log("📏 Données de taille trouvées:", sizeData);
+      
+      const formatData = formats.find(f => f.size === sizeData?.equivalentFrameSize);
+      console.log("📐 Format correspondant:", formatData);
+      
+      const baseFrameOption = formatData?.frameOptions.find(f => f.color === "none");
+      console.log("🏷️ Prix de base trouvé:", baseFrameOption?.price);
+      
+      return baseFrameOption?.price || 0;
+    } else {
+      console.log("🖼️ Prix du cadre sélectionné:", selectedFrame?.price);
+      return selectedFrame?.price || 0;
+    }
+  };
+
+  // Fonction pour gérer le changement de taille
+  const handleSizeChange = (size: string) => {
+    console.log("🔄 Changement de taille:", size);
+    setSelectedSize(size);
+    setSelectedFrame(null);
+    
+    const sizeData = imageData?.sizes.find(s => s.size === size);
+    console.log("📏 Données de la nouvelle taille:", sizeData);
+    
+    const formatData = formats.find(f => f.size === sizeData?.equivalentFrameSize);
+    console.log("📐 Nouveau format correspondant:", formatData);
+    
+    const baseFrameOption = formatData?.frameOptions.find(f => f.color === "none");
+    console.log("💰 Nouveau prix de base:", baseFrameOption?.price);
+    
+    if (baseFrameOption) {
+      setBasePrice(baseFrameOption.price);
+    }
+  };
+
+  // Ajouter cette fonction pour gérer la sélection de couleur
+  const handleColorSelect = (color: string) => {
+    console.log("🎨 Couleur sélectionnée:", color);
+    setSelectedColor(color);
+    
+    // Trouver le frame correspondant
+    const selectedFormat = formats.find(f => {
+      const sizeData = imageData?.sizes.find(s => s.size === selectedSize);
+      return f.size === sizeData?.equivalentFrameSize;
+    });
+
+    const frameOption = selectedFormat?.frameOptions.find(f => f.color === color);
+    console.log("🖼️ Option de cadre correspondante:", frameOption);
+    
+    if (frameOption) {
+      setSelectedFrame(frameOption);
+    }
+  };
+
   if (isLoading) {
-    // Loader Skeleton
+    console.log("⌛ Affichage du loader");
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col md:flex-row gap-8">
@@ -172,10 +514,7 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
           </div>
 
           {/* Section Détails Skeleton */}
-          <div
-            className="flex-1 border-2 border-gray-300 p-6 rounded-none shadow"
-            style={{ height: "400px" }}
-          >
+          <div className="flex-1 border-2 border-gray-300 p-6 rounded-none shadow" style={{ height: "400px" }}>
             <Skeleton className="h-8 mb-4" />
             <Skeleton className="h-4 mb-2" />
             <Skeleton className="h-4 mb-2" />
@@ -189,8 +528,17 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
   }
 
   if (!imageData) {
-    return null; // Ou un message d'erreur approprié
+    console.log("❌ Pas de données d'image");
+    return <div>Aucune donnée disponible</div>;
   }
+
+  console.log("🎨 Rendu de la page avec les données:", {
+    imageData,
+    formats,
+    selectedSize,
+    frameOption,
+    selectedFrame
+  });
 
   // Vérifier si le format est vertical
   const isVertical = imageData.format.toLowerCase() === "vertical";
@@ -268,45 +616,90 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
                 </div>
               </div>
             ) : (
-              // Image principale et vignettes sur desktop
-              <div className="flex flex-col gap-4">
-                <div
-                  className="relative mx-auto"
-                  style={{ width: mainImageWidth, height: mainImageHeight }}
-                >
-                  <Image
-                    src={imageData.images[selectedImageIndex]?.link || ""}
-                    alt={`Image ${selectedImageIndex + 1}`}
-                    fill
-                    sizes={`${mainImageWidth}px`}
-                    style={{ objectFit: "cover" }}
-                    className="shadow-md transition-transform duration-200 ease-in-out transform hover:scale-105"
-                  />
+              <div>
+                {/* Image principale avec ou sans cadre */}
+                <div className="relative mb-4" style={{ height: mainImageHeight, width: mainImageWidth }}>
+                  {frameOption === "avec" && selectedFrame ? (
+                    <div style={FRAME_STYLES.container}>
+                      {/* Image du cadre en arrière-plan */}
+                      <Image
+                        src={selectedFrame.imageUrl}
+                        alt={`Cadre ${selectedFrame.name}`}
+                        fill
+                        style={FRAME_STYLES.frame}
+                        className="pointer-events-none"
+                        priority
+                      />
+                      
+                      {/* Image du produit centrée et réduite */}
+                      <div style={FRAME_STYLES.image}>
+                        <Image
+                          src={imageData.images[selectedImageIndex].link}
+                          alt={`Image ${selectedImageIndex + 1}`}
+                          fill
+                          style={{ 
+                            objectFit: "contain",
+                          }}
+                          className="rounded-none"
+                          priority
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    // Image sans cadre (normale)
+                    <Image
+                      src={imageData.images[selectedImageIndex].link}
+                      alt={`Image ${selectedImageIndex + 1}`}
+                      fill
+                      style={{ 
+                        objectFit: isVertical ? "contain" : "cover",
+                      }}
+                      className="rounded-lg"
+                      priority
+                    />
+                  )}
                 </div>
 
-                {/* Vignettes */}
-                <div
-                  className={`mt-4 grid ${
-                    isVertical ? "grid-cols-3 gap-2" : "grid-cols-4 gap-2"
-                  }`}
-                >
+                {/* Miniatures */}
+                <div className="grid grid-cols-4 gap-2">
                   {imageData.images.map((image, index) => (
                     <div
                       key={index}
+                      onClick={() => setSelectedImageIndex(index)}
                       className={`relative cursor-pointer ${
-                        !isVertical ? "border-2 border-gray-300" : "border-none"
-                      } overflow-hidden transition-shadow duration-200 ease-in-out hover:shadow-lg`}
-                      onClick={() => handleImageClick(index)}
-                      style={{ width: "100%", height: thumbnailHeight }}
+                        selectedImageIndex === index ? "ring-2 ring-blue-500" : ""
+                      }`}
+                      style={{ height: thumbnailHeight }}
                     >
-                      <Image
-                        src={image.link}
-                        alt={`Thumbnail ${index + 1}`}
-                        fill
-                        sizes="100%"
-                        style={{ objectFit: "cover" }}
-                        className=""
-                      />
+                      {frameOption === "avec" && selectedFrame ? (
+                        <div style={FRAME_STYLES.container}>
+                          <Image
+                            src={selectedFrame.imageUrl}
+                            alt={`Cadre miniature ${selectedFrame.name}`}
+                            fill
+                            style={FRAME_STYLES.frame}
+                            className="pointer-events-none"
+                          />
+                          <div style={FRAME_STYLES.image}>
+                            <Image
+                              src={image.link}
+                              alt={`Miniature ${index + 1}`}
+                              fill
+                              style={{ objectFit: "contain" }}
+                              className="rounded-none"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        // Miniature sans cadre
+                        <Image
+                          src={image.link}
+                          alt={`Miniature ${index + 1}`}
+                          fill
+                          style={{ objectFit: isVertical ? "contain" : "cover" }}
+                          className="rounded-lg"
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
@@ -353,92 +746,160 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
 
             {/* Sélection du cadre */}
             <div className="mb-6">
-              <div className="flex flex-wrap gap-2">
+              <h3 className="text-xl mb-2">Options de finition</h3>
+              <div className="flex gap-2 mb-4">
                 <Button
-                  onClick={() => setFrameOption("sans")}
+                  onClick={() => {
+                    console.log("🔄 Option sélectionnée: sans cadre");
+                    setFrameOption("sans");
+                    setSelectedFrame(null);
+                    setSelectedColor(null);
+                  }}
                   variant={frameOption === "sans" ? "default" : "outline"}
-                  className={`flex items-center justify-center ${
-                    frameOption === "sans"
-                      ? "bg-transparent text-black border-[1.2px] border-black"
-                      : "bg-black text-white"
-                  } hover:bg-gray-600 transition-colors duration-200`}
                 >
                   Sans cadre
                 </Button>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        disabled={true}
-                        variant="outline"
-                        className="flex items-center justify-center bg-gray-300 text-gray-500 cursor-not-allowed"
-                      >
-                        Avec cadre
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>
-                        L&apos;option d&apos;achat avec cadre arrive bientôt !
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <Button
+                  onClick={() => {
+                    console.log("🔄 Option sélectionnée: avec cadre");
+                    setFrameOption("avec");
+                    // Présélectionner la première couleur disponible (blanc par défaut)
+                    const defaultColor = colorPoints.find(point => point.color === "blanc")?.color || colorPoints[0]?.color;
+                    if (defaultColor) {
+                      console.log("🎨 Présélection de la couleur:", defaultColor);
+                      handleColorSelect(defaultColor);
+                    }
+                  }}
+                  variant={frameOption === "avec" ? "default" : "outline"}
+                >
+                  Avec cadre
+                </Button>
               </div>
-            </div>
 
-            <p className="text-lg font-semibold text-gray-800 mb-2">
-              Disponible en plusieurs tailles
-            </p>
-
-            {/* Sélection de Format */}
-            <div className="mb-6">
-              <p className="text-sm mb-2">Sélectionnez un format :</p>
-              <div className="flex flex-wrap gap-2">
-                {imageData.sizes.map((size) => (
-                  <Button
-                    key={size.size}
-                    onClick={() => {
-                      setSelectedSize(size.size);
-                      setSelectedPrice(size.price);
-                      setIsAdded(false);
-                    }}
-                    disabled={size.stock <= 0}
-                    variant={selectedSize === size.size ? "default" : "outline"}
-                    className={`flex items-center justify-center ${
-                      size.stock <= 0
-                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        : selectedSize === size.size
-                        ? "bg-transparent text-black border-[1.2px] border-black"
-                        : "bg-black text-white"
-                    } hover:bg-gray-600 transition-colors duration-200`}
-                  >
-                    {size.size} {size.stock <= 0 && "(Rupture de stock)"}
-                  </Button>
-                ))}
+              {/* Sélection des tailles */}
+              <div className="mb-4">
+                <h4 className="text-sm mb-2">Format :</h4>
+                <div className="flex flex-wrap gap-2">
+                  {imageData.sizes.map((size) => (
+                    <Button
+                      key={size.size}
+                      onClick={() => handleSizeChange(size.size)}
+                      variant={selectedSize === size.size ? "default" : "outline"}
+                    >
+                      {frameOption === "sans" ? size.size : size.equivalentFrameSize}
+                    </Button>
+                  ))}
+                </div>
               </div>
+
+              {/* Options de couleur si "avec cadre" est sélectionné */}
+              {frameOption === "avec" && selectedSize && (
+                <div className="mt-4">
+                  <h4 className="text-sm mb-2">Sélectionnez une couleur :</h4>
+                  
+                  {isLoadingColors ? (
+                    <div className="flex justify-center">
+                      <CircularProgress size={24} />
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-4 mb-6">
+                      {colorPoints.map((point) => {
+                        console.log(`🎨 Tentative d'affichage du point de couleur:`, {
+                          color: point.color,
+                          url: point.urlPoint,
+                          isValidUrl: point.urlPoint?.startsWith('https://'),
+                        });
+                        
+                        // Vérifier si l'URL est valide
+                        if (!point.urlPoint || !point.urlPoint.startsWith('https://')) {
+                          console.error(`❌ URL invalide pour ${point.color}:`, point.urlPoint);
+                          return null;
+                        }
+
+                        return (
+                          <div
+                            key={point.color}
+                            onClick={() => handleColorSelect(point.color)}
+                            className={`relative cursor-pointer transition-all duration-200 ${
+                              selectedColor === point.color 
+                                ? 'transform scale-110' 
+                                : 'hover:scale-105'
+                            }`}
+                          >
+                            <div className={`
+                              rounded-full 
+                              p-0.5
+                              ${selectedColor === point.color 
+                                ? 'border-4 border-blue-500' 
+                                : 'border border-gray-300 hover:border-gray-400'
+                              }
+                            `}>
+                              <div className="relative w-[30px] h-[30px] rounded-full overflow-hidden bg-gray-100">
+                                <Image
+                                  src={point.urlPoint}
+                                  alt={`Couleur ${point.color}`}
+                                  width={30}
+                                  height={30}
+                                  className="rounded-full object-cover"
+                                  priority={true}
+                                  onError={(e) => {
+                                    console.error(`❌ Erreur de chargement de l'image pour ${point.color}:`, {
+                                      url: point.urlPoint,
+                                      error: e
+                                    });
+                                    // Utiliser une couleur de fond comme fallback
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.parentElement!.style.backgroundColor = point.color === 'blanc' ? '#FFFFFF' : 
+                                                                                       point.color === 'noir' ? '#000000' : 
+                                                                                       point.color === 'rouge' ? '#FF0000' : 
+                                                                                       '#CCCCCC';
+                                  }}
+                                  onLoad={() => {
+                                    console.log(`✅ Image chargée avec succès pour ${point.color}:`, point.urlPoint);
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            <span className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs whitespace-nowrap">
+                              {point.color.replace('motif-', '')}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Aperçu du cadre sélectionné */}
+                  {selectedFrame && (
+                    <div className="mt-8">
+                      <h4 className="text-sm mb-2">Aperçu du cadre :</h4>
+                      <div className="relative h-40 w-full">
+                        <Image
+                          src={selectedFrame.imageUrl}
+                          alt={selectedFrame.name}
+                          fill
+                          style={{ objectFit: "contain" }}
+                        />
+                      </div>
+                      <p className="text-center mt-2">{selectedFrame.name}</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Prix et Ajouter au Panier */}
-            <p className="text-2xl font-bold mb-4">Prix: {selectedPrice} €</p>
-            <Button
-              onClick={() => {
-                handleAddToCart();
-                toast({
-                  title: "Produit ajouté",
-                  description: `Format sélectionné : ${selectedSize}`,
-                  variant: "default",
-                });
-              }}
-              disabled={!selectedSize || isAdded}
-              variant={isAdded ? "secondary" : "default"}
-              className={`w-full ${
-                !selectedSize ? "cursor-not-allowed opacity-50" : ""
-              } ${
-                isAdded ? "bg-gray-500" : "bg-black"
-              } hover:bg-gray-700 transition-colors duration-200`}
-            >
-              {isAdded ? "Ajouté au panier" : "Ajouter au panier"}
-            </Button>
+            <div className="mt-6">
+              <p className="text-2xl font-bold mb-4">Prix: {calculatePrice()}€</p>
+              <Button
+                onClick={handleAddToCart}
+                className="w-full"
+                disabled={isAdded || !selectedSize}
+              >
+                {isAdded ? "Ajouté au panier" : "Ajouter au panier"}
+              </Button>
+            </div>
 
             {/* Message sur la disponibilité */}
             {selectedSize && (
@@ -529,6 +990,18 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
           </div>
         </div>
       </div>
+
+      {/* Composant de débogage */}
+      {/* <DebugInfo 
+        data={imageData}
+        formats={formats}
+        selectedSize={selectedSize}
+        selectedColor={selectedColor}
+        frameOption={frameOption}
+        selectedFrame={selectedFrame}
+        colorPoints={colorPoints}
+        error={debugError}
+      /> */}
     </>
   );
 }

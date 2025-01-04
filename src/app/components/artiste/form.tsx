@@ -30,7 +30,7 @@ const schema = z.object({
   sizes: z.array(
     z.object({
       size: z.string(),
-      price: z.number().min(1, "Le prix doit être supérieur ou égal à 2€"),
+      equivalentFrameSize: z.string(),
       stock: z.number().min(3, "Le stock doit être supérieur ou égal à 4"),
     })
   ).min(1, 'Vous devez sélectionner au moins un format'),
@@ -62,18 +62,22 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [uploadedImages, setUploadedImages] = useState<(File | { link: string } | null)[]>([null, null, null, null, null, null]);
-  const [selectedSizes, setSelectedSizes] = useState<{ size: string; stock: number; price: number }[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<{ 
+    size: string;
+    equivalentFrameSize: string;
+    stock: number;
+    initialStock: number;
+    nextSerialNumber: number;
+  }[]>([]);
 
   // Formulaire pour le nom complet
   const { register: registerArtisteName, handleSubmit: handleSubmitArtisteName, formState: { errors: errorsArtisteName },} = useForm<{ artiste_name: string }>({ resolver: zodResolver(artisteNameSchema),});
 
   const sizesWithDescription = [
-    { size: '10x15 cm', description: 'Carte Postale (10x15) 5€ A6' },
-    { size: '20x30 cm', description: 'Petit Format (20x30)  30€ A4' },
-    { size: '30x40 cm', description: 'Moyen format (30x40) 60€ A3' },
-    { size: '40x60 cm', description: 'Grand format (40x60) 120€ A2' }
+    { size: "A4", equivalentFrameSize: '30x40cm', description: 'Petit Format (20x30)  30€ A4' },
+    { size: "A3", equivalentFrameSize: '40x50cm', description: 'Moyen format (30x40) 60€ A3' },
+    { size: "A2", equivalentFrameSize: '50x70cm', description: 'Grand format (40x70) 120€ A2' }
   ];
-
 
   useEffect(() => {
     const fetchProductData = async () => {
@@ -185,13 +189,32 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
     if (selectedSizes.some((s) => s.size === size)) {
       setSelectedSizes(selectedSizes.filter((s) => s.size !== size));
     } else {
-      setSelectedSizes([...selectedSizes, { size, stock: 0, price: 0 }]);
+      const sizeInfo = sizesWithDescription.find(s => s.size === size);
+      if (sizeInfo) {
+        setSelectedSizes([...selectedSizes, { 
+          size: size,
+          equivalentFrameSize: sizeInfo.equivalentFrameSize,
+          stock: 0,
+          initialStock: 0,
+          nextSerialNumber: 1
+        }]);
+      }
     }
   };
 
-  const handleSizeDetailsChange = (size: string, key: 'stock' | 'price', value: number) => {
+  const handleSizeDetailsChange = (size: string, key: 'stock', value: number) => {
     setSelectedSizes(
-      selectedSizes.map((s) => s.size === size ? { ...s, [key]: value } : s)
+      selectedSizes.map((s) => {
+        if (s.size === size) {
+          return { 
+            ...s, 
+            [key]: value,
+            initialStock: value,
+            nextSerialNumber: 1
+          };
+        }
+        return s;
+      })
     );
     setValue('sizes', selectedSizes);
   };
@@ -308,14 +331,6 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
                       min="3"
                       value={selectedSizes.find((s) => s.size === size)?.stock || ''}
                       onChange={(e) => handleSizeDetailsChange(size, 'stock', Number(e.target.value))}
-                      className="form-input w-full p-2 rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                    <input
-                      type="number"
-                      placeholder="Prix"
-                      min="1"
-                      value={selectedSizes.find((s) => s.size === size)?.price || ''}
-                      onChange={(e) => handleSizeDetailsChange(size, 'price', Number(e.target.value))}
                       className="form-input w-full p-2 rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                     />
                   </div>

@@ -1,100 +1,94 @@
-import { create } from "zustand";
-import { immer } from "zustand/middleware/immer";
-import { useEffect } from "react";
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import { useEffect } from 'react';
 
 interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  format: string;
+  id: string;           // ID du produit
+  size: string;         // Taille sélectionnée
+  frameOption: "avec" | "sans";
+  frameColor?: string;  // Couleur du cadre si frameOption === "avec"
   quantity: number;
-  stock: number;
-  artisteName: string;
-  artisteEmail: string;
-  artisteId: string;
 }
 
-interface CartState {
+interface CartStore {
   items: CartItem[];
+  isInitialized: boolean;
   addItem: (item: CartItem) => void;
-  removeItem: (id: string, format: string) => void;
-  updateQuantity: (id: string, format: string, quantity: number) => void;
-  updatePrice: (id: string, format: string, newPrice: number) => void;
+  removeItem: (id: string, size: string, frameColor?: string) => void;
   clearCart: () => void;
-  loadCart: () => void; // Fonction pour charger le panier depuis localStorage
+  initializeCart: () => void;
+  updateQuantity: (id: string, size: string, frameColor: string | undefined, quantity: number) => void;
 }
 
-export const useCart = create<CartState>()(
-  immer((set) => ({
-    items: [],
-
-    addItem: (item: CartItem) =>
-      set((state) => {
-        const existingItem = state.items.find(
-          (i) => i.id === item.id && i.format === item.format
-        );
-        if (existingItem) {
-          existingItem.quantity += item.quantity;
-        } else {
-          state.items.push(item);
-        }
-        localStorage.setItem("cart", JSON.stringify(state.items));
-      }),
-
-    removeItem: (id: string, format: string) =>
-      set((state) => {
-        state.items = state.items.filter(
-          (item) => !(item.id === id && item.format === format)
-        );
-        localStorage.setItem("cart", JSON.stringify(state.items));
-      }),
-
-    updateQuantity: (id: string, format: string, quantity: number) =>
-      set((state) => {
-        const item = state.items.find(
-          (item) => item.id === id && item.format === format
-        );
-        if (item) {
-          item.quantity = quantity;
-        }
-        localStorage.setItem("cart", JSON.stringify(state.items));
-      }),
-
-    updatePrice: (id: string, format: string, newPrice: number) => {
-      set((state) => {
-        const item = state.items.find(
-          (item) => item.id === id && item.format === format
-        );
-        if (item) {
-          item.price = newPrice;
-        }
-        localStorage.setItem("cart", JSON.stringify(state.items));
-      });
-    },
-
-    clearCart: () =>
-      set((state) => {
-        state.items = [];
-        localStorage.setItem("cart", JSON.stringify(state.items)); // Sauvegarder dans le localStorage
-      }),
-
-    loadCart: () => {
-      const cartData = localStorage.getItem("cart");
-      if (cartData) {
+export const useCart = create(
+  persist<CartStore>(
+    (set) => ({
+      items: [],
+      isInitialized: false,
+      addItem: (item) => 
         set((state) => {
-          state.items = JSON.parse(cartData);
-        });
-      }
-    },
-  }))
+          const existingItem = state.items.find(
+            i => i.id === item.id && 
+                i.size === item.size && 
+                i.frameOption === item.frameOption &&
+                i.frameColor === item.frameColor
+          );
+
+          if (existingItem) {
+            return {
+              ...state,
+              items: state.items.map((i) =>
+                i.id === item.id && 
+                i.size === item.size && 
+                i.frameOption === item.frameOption &&
+                i.frameColor === item.frameColor
+                  ? { ...i, quantity: i.quantity + 1 }
+                  : i
+              ),
+            };
+          }
+
+          return { 
+            ...state,
+            items: [...state.items, { ...item, quantity: 1 }] 
+          };
+        }),
+      removeItem: (id, size, frameColor) =>
+        set((state) => ({
+          ...state,
+          items: state.items.filter(
+            i => !(i.id === id && i.size === size && i.frameColor === frameColor)
+          ),
+        })),
+      clearCart: () => set((state) => ({ ...state, items: [] })),
+      initializeCart: () => set((state) => ({ ...state, isInitialized: true })),
+      updateQuantity: (id, size, frameColor, quantity) =>
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.id === id &&
+            item.size === size &&
+            item.frameColor === frameColor
+              ? { ...item, quantity }
+              : item
+          ),
+        })),
+    }),
+    {
+      name: 'cart-storage',
+    }
+  )
 );
 
-// Hook pour charger le panier depuis localStorage à chaque fois que le composant est monté
+// Hook pour initialiser le panier
 export const useInitializeCart = () => {
-  const loadCart = useCart((state) => state.loadCart);
+  const { initializeCart, isInitialized } = useCart();
 
   useEffect(() => {
-    loadCart(); // Charger les items du panier au montage
-  }, [loadCart]);
+    if (!isInitialized) {
+      console.log("🛒 Initialisation du panier...");
+      initializeCart();
+    }
+  }, [initializeCart, isInitialized]);
+
+  return useCart((state) => state.items);
 };

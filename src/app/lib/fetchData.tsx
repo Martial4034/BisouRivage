@@ -4,7 +4,7 @@ import { db } from "@/app/firebase";
 interface ImageData {
   id: string;
   description: string;
-  sizes: { size: string; price: number; stock: number }[];
+  sizes: { size: string; price: number; stock: number; nextSerialNumber: number; initialStock: number; equivalentFrameSize: string; }[];
   images: { link: string }[];
   artisteName: string;
   artisteEmail: string;
