@@ -77,10 +77,6 @@ export default function CertificateDetails({
                       {product.serialNumber}
                     </p>
                     <p>
-                      <span className="font-medium">Prix:</span>{" "}
-                      {formatPrice(product.price)}
-                    </p>
-                    <p>
                       <span className="font-medium">Date de publication:</span>{" "}
                       {product.createdAt}
                     </p>

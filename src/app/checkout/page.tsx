@@ -37,12 +37,55 @@ interface CheckoutItem {
     framePrice: number;
     totalPrice: number;
     unitPrice: number;
-    originalTotal: number;
-    originalUnitPrice: number;
-    discountPercentage: number;
     image: string;
     stock: number;
+    discountPercentage?: number;
+    originalTotal?: number;
+    originalUnitPrice?: number;
   };
+}
+
+// Types pour la gestion des états de chargement et des erreurs
+interface LoadingStates {
+  verification: boolean;
+  priceUpdate: boolean;
+  quantityUpdate: boolean;
+  checkout: boolean;
+}
+
+interface ErrorStates {
+  verification: string | null;
+  priceUpdate: string | null;
+  quantityUpdate: string | null;
+  checkout: string | null;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+}
+
+interface VerificationUpdate {
+  id: string;
+  size: string;
+  frameColor?: string;
+  status: 'removed' | 'quantity_adjusted' | 'price_changed' | 'frame_unavailable';
+  message: string;
+  newQuantity?: number;
+  newPrice?: number;
+}
+
+// Ajout des types pour la promotion
+interface Promotion {
+  type: "free_item";
+  appliedTo: {
+    id: string;
+    size: string;
+    frameColor?: string;
+    price: number;
+    quantity: number;
+  };
+  message: string;
 }
 
 const CheckoutPage = () => {
@@ -63,15 +106,46 @@ const CheckoutPage = () => {
   const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null);
   const fee = 12.5;
   const [loadingQuantityUpdates, setLoadingQuantityUpdates] = useState<{[key: string]: boolean}>({});
+  const [loadingStates, setLoadingStates] = useState<LoadingStates>({
+    verification: false,
+    priceUpdate: false,
+    quantityUpdate: false,
+    checkout: false
+  });
+  const [errors, setErrors] = useState<ErrorStates>({
+    verification: null,
+    priceUpdate: null,
+    quantityUpdate: null,
+    checkout: null
+  });
+  const [promotion, setPromotion] = useState<Promotion | null>(null);
 
-  // Charger les détails initiaux
+  // Fonction utilitaire pour générer une clé unique pour chaque item
+  const getItemKey = (item: CheckoutItem) => `${item.id}-${item.size}-${item.frameColor}`;
+
+  // Initialisation
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Chargement des détails des produits
   useEffect(() => {
     const fetchItemDetails = async () => {
+      if (!isMounted || items.length === 0) return;
+
       setIsLoadingDetails(true);
       try {
+        console.log("🛒 Chargement des détails des produits...", items);
         const itemsWithData = await Promise.all(
           items.map(async (item) => {
-            const response = await fetch('/api/product/price', {
+            console.log(`📦 Chargement des détails pour l'article:`, {
+              id: item.id,
+              size: item.size,
+              frameOption: item.frameOption,
+              frameColor: item.frameColor
+            });
+
+            const response = await fetchWithRetry('/api/product/price', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -83,33 +157,46 @@ const CheckoutPage = () => {
               }),
             });
 
-            if (!response.ok) {
-              throw new Error(`Erreur lors de la récupération des détails pour ${item.id}`);
+            const { data, error } = response;
+
+            if (error) {
+              throw new Error(`Erreur pour l'article ${item.id}: ${error}`);
             }
 
-            const { data } = await response.json();
+            console.log(`✅ Détails reçus pour l'article ${item.id}:`, data);
+
             return {
               ...item,
               details: {
-                name: data.productInfo.name,
-                artisteName: data.productInfo.artisteName,
-                basePrice: data.basePrice,
-                framePrice: data.framePrice,
-                totalPrice: data.totalPrice,
-                unitPrice: data.unitPrice,
+                name: data.productInfo.name || 'Produit sans nom',
+                artisteName: data.productInfo.artisteName || 'Artiste inconnu',
+                basePrice: data.basePrice || 0,
+                framePrice: data.framePrice || 0,
+                totalPrice: data.totalPrice || 0,
+                unitPrice: data.unitPrice || 0,
+                image: data.productInfo.image || '/placeholder.jpg',
+                stock: data.stock || 0,
+                discountPercentage: data.discountPercentage,
                 originalTotal: data.originalTotal,
                 originalUnitPrice: data.originalUnitPrice,
-                discountPercentage: data.discountPercentage,
-                image: data.productInfo.image,
-                stock: data.stock,
               }
             };
           })
         );
 
+        console.log("🎉 Tous les détails chargés:", itemsWithData);
         setItemsWithDetails(itemsWithData);
+        
+        // Calculer le total initial
+        const subtotal = itemsWithData.reduce(
+          (sum, item) => sum + (item.details?.totalPrice || 0) * item.quantity,
+          0
+        );
+        const discountAmount = (subtotal * discount) / 100;
+        setCartTotal(subtotal - discountAmount + fee);
+
       } catch (error) {
-        console.error("Erreur lors du chargement des détails:", error);
+        console.error("❌ Erreur lors du chargement des détails:", error);
         toast({
           title: "Erreur",
           description: "Impossible de charger les détails des produits",
@@ -120,10 +207,8 @@ const CheckoutPage = () => {
       }
     };
 
-    if (isMounted && items.length > 0) {
-      fetchItemDetails();
-    }
-  }, [items, isMounted, toast, updateQuantity]);
+    fetchItemDetails();
+  }, [items, isMounted, toast, discount, fee]);
 
   useEffect(() => {
     // Vérifier si la notification d'annulation est dans localStorage
@@ -141,10 +226,6 @@ const CheckoutPage = () => {
       window.localStorage.removeItem('checkoutCancelled');
     }
   }, [toast]);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   useEffect(() => {
     if (isMounted && items.length > 0) {
@@ -166,8 +247,11 @@ const CheckoutPage = () => {
 
   // Fonction pour vérifier les éléments du panier
   const verifyCart = async () => {
+    if (!items.length) return;
+
     try {
-      const response = await fetch('/api/verification', {
+      console.log("🔄 Vérification du panier:", items);
+      const response = await fetchWithRetry('/api/verification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -177,10 +261,10 @@ const CheckoutPage = () => {
         }),
       });
 
-      const data = await response.json();
-
-      if (data.updates) {
-        data.updates.forEach((update: CartUpdate) => {
+      if (response.updates && response.updates.length > 0) {
+        let hasChanges = false;
+        response.updates.forEach((update: CartUpdate) => {
+          console.log("📝 Mise à jour:", update);
           toast({
             title: 'Mise à jour du panier',
             description: update.message,
@@ -189,15 +273,19 @@ const CheckoutPage = () => {
 
           if (update.status === 'quantity_adjusted' && update.newQuantity) {
             updateQuantity(update.id, update.size, update.frameColor, update.newQuantity);
+            hasChanges = true;
           } else if (update.status === 'removed') {
             removeItem(update.id, update.size, update.frameColor);
+            hasChanges = true;
           }
         });
 
-        await updateAllPrices();
+        if (hasChanges) {
+          await updateAllPrices();
+        }
       }
     } catch (err) {
-      console.error("Erreur lors de la vérification du panier:", err);
+      console.error("❌ Erreur lors de la vérification du panier:", err);
       toast({
         title: 'Erreur',
         description: 'Une erreur est survenue lors de la vérification du panier.',
@@ -206,62 +294,297 @@ const CheckoutPage = () => {
     }
   };
 
-  const handleCheckout = async () => {
-    setIsLoading(true);
+  // Fonction pour les appels API avec retry
+  const fetchWithRetry = async (url: string, options: RequestInit, maxRetries = 3) => {
+    let lastError;
+    
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const response = await fetch(url, options);
+        const data = await response.json();
 
-    if (status !== 'authenticated') {
-      setIsModalOpen(true);
-      setIsLoading(false);
-      return;
+        // Si la réponse contient une erreur d'authentification
+        if (response.status === 401) {
+          return { error: data.error, status: 401 };
+        }
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return data;
+      } catch (error) {
+        console.error(`Tentative ${i + 1}/${maxRetries} échouée:`, error);
+        lastError = error;
+        if (i < maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+        }
+      }
     }
+    throw lastError;
+  };
+
+  // Validation des données
+  const validateCartItem = (item: CheckoutItem): ValidationResult => {
+    const errors: string[] = [];
+    
+    if (!item.id) errors.push("ID du produit manquant");
+    if (!item.size) errors.push("Format non spécifié");
+    if (item.quantity < 1) errors.push("Quantité invalide");
+    if (item.frameOption === "avec" && !item.frameColor) {
+      errors.push("Couleur de cadre non spécifiée pour l'option avec cadre");
+    }
+    
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  };
+
+  // Synchronisation des données du panier avec vérification des cadres
+  const synchronizeCartData = async () => {
+    setLoadingStates(prev => ({ ...prev, verification: true }));
+    try {
+      console.log("🔄 Début de la synchronisation du panier");
+      
+      const verificationResponse = await fetchWithRetry('/api/verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cartItems: items }),
+      });
+
+      console.log("📋 Résultat de la vérification:", verificationResponse);
+
+      // Mise à jour de la promotion
+      if (verificationResponse.promotion) {
+        setPromotion(verificationResponse.promotion);
+        toast({
+          title: "Promotion appliquée !",
+          description: verificationResponse.promotion.message,
+        });
+      } else {
+        setPromotion(null);
+      }
+
+      let needsUpdate = false;
+
+      if (verificationResponse.updates && verificationResponse.updates.length > 0) {
+        for (const update of verificationResponse.updates) {
+          console.log("🔄 Traitement de la mise à jour:", update);
+          
+          switch (update.status) {
+            case 'removed':
+              console.log("❌ Suppression de l'article:", update);
+              removeItem(update.id, update.size, update.frameColor);
+              toast({
+                title: "Article retiré",
+                description: update.message,
+                variant: "destructive",
+              });
+              needsUpdate = true;
+              break;
+              
+            case 'quantity_adjusted':
+              if (update.newQuantity) {
+                console.log("📦 Ajustement de la quantité:", update);
+                updateQuantity(update.id, update.size, update.frameColor, update.newQuantity);
+                toast({
+                  title: "Quantité ajustée",
+                  description: update.message,
+                });
+                needsUpdate = true;
+              }
+              break;
+              
+            case 'frame_unavailable':
+              console.log("🖼️ Cadre non disponible:", update);
+              toast({
+                title: "Cadre non disponible",
+                description: update.message,
+                variant: "destructive",
+              });
+              removeItem(update.id, update.size, update.frameColor);
+              needsUpdate = true;
+              break;
+              
+            case 'price_changed':
+              console.log("💰 Prix mis à jour:", update);
+              toast({
+                title: "Prix mis à jour",
+                description: update.message,
+              });
+              needsUpdate = true;
+              break;
+          }
+        }
+
+        if (needsUpdate) {
+          console.log("🔄 Mise à jour des prix nécessaire");
+          await updateAllPrices();
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Erreur lors de la synchronisation:', error);
+      setErrors(prev => ({
+        ...prev,
+        verification: "Erreur lors de la vérification du panier"
+      }));
+      toast({
+        title: "Erreur de synchronisation",
+        description: "Impossible de vérifier le contenu du panier",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingStates(prev => ({ ...prev, verification: false }));
+    }
+  };
+
+  // Mise à jour de handleQuantityChange avec la nouvelle logique
+  const handleQuantityChange = async (item: CheckoutItem, newQuantity: number) => {
+    const itemKey = getItemKey(item);
+    
+    if (newQuantity < 1 || newQuantity > (item.details?.stock || 0)) return;
 
     try {
-      const response = await fetch('/api/secured/checkout', {
+      setLoadingQuantityUpdates(prev => ({ ...prev, [itemKey]: true }));
+      
+      // Vérifier d'abord la disponibilité
+      const verificationResponse = await fetchWithRetry('/api/verification', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: itemsWithDetails.map(item => ({
+          cartItems: [{
             id: item.id,
             size: item.size,
             frameOption: item.frameOption,
             frameColor: item.frameColor,
-            quantity: item.quantity,
-            unitPrice: item.details?.unitPrice || 0,
-            totalPrice: (item.details?.totalPrice || 0) * item.quantity,
-            discountPercentage: item.details?.discountPercentage || 0
-          })),
-          cartTotal: cartTotal,
-          promoCode: appliedPromoCode,
-          discount: discount
+            quantity: newQuantity
+          }]
         }),
       });
 
-      const { url, error } = await response.json();
+      if (verificationResponse.updates.length > 0) {
+        const update = verificationResponse.updates[0];
+        if (update.status === 'removed') {
+          throw new Error("Ce produit n'est plus disponible");
+        }
+        if (update.status === 'quantity_adjusted') {
+          newQuantity = update.newQuantity!;
+        }
+      }
+
+      // Obtenir le prix mis à jour
+      const priceResponse = await fetchWithRetry('/api/product/price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: item.id,
+          size: item.size,
+          frameOption: item.frameOption,
+          frameColor: item.frameColor,
+          quantity: newQuantity
+        }),
+      });
+
+      const { data, error } = priceResponse;
 
       if (error) {
-        setError(error);
-        toast({
-          title: "Erreur",
-          description: error,
-          variant: "destructive",
-        });
-        return;
+        throw new Error(error);
       }
 
-      if (url) {
-        window.location.href = url;
-      }
-    } catch (err) {
-      console.error("Erreur lors du checkout:", err);
+      // Mettre à jour la quantité dans le panier
+      updateQuantity(item.id, item.size, item.frameColor, newQuantity);
+
+      // Mettre à jour les détails de l'item
+      const updatedItems = itemsWithDetails.map(i => 
+        i.id === item.id && i.size === item.size && i.frameColor === item.frameColor
+          ? {
+              ...i,
+              quantity: newQuantity,
+              details: {
+                ...i.details!,
+                totalPrice: data.totalPrice,
+                unitPrice: data.unitPrice,
+                stock: data.stock,
+                discountPercentage: data.discountPercentage,
+                originalTotal: data.originalTotal,
+                originalUnitPrice: data.originalUnitPrice,
+              }
+            }
+          : i
+      );
+
+      setItemsWithDetails(updatedItems);
+      recalculateTotal(updatedItems);
+
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de la quantité:', error);
       toast({
         title: "Erreur",
-        description: "Une erreur est survenue lors de la création du paiement",
+        description: error instanceof Error ? error.message : "Impossible de mettre à jour la quantité",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoadingQuantityUpdates(prev => ({ ...prev, [itemKey]: false }));
+    }
+  };
+
+  // Mise à jour de handleCheckout avec la nouvelle logique
+  const handleCheckout = async () => {
+    if (!session) {
+      setIsModalOpen(true);
+      return;
+    }
+
+    setLoadingStates(prev => ({ ...prev, checkout: true }));
+    setErrors(prev => ({ ...prev, checkout: null }));
+
+    try {
+      // Valider tous les articles
+      const validationErrors: string[] = [];
+      items.forEach(item => {
+        const validation = validateCartItem(item);
+        if (!validation.isValid) {
+          validationErrors.push(...validation.errors);
+        }
+      });
+
+      if (validationErrors.length > 0) {
+        throw new Error(`Erreurs de validation: ${validationErrors.join(', ')}`);
+      }
+
+      // Synchroniser une dernière fois avant le checkout
+      await synchronizeCartData();
+
+      const response = await fetchWithRetry('/api/secured/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cartItems: items,
+          promoCodeId: promoCode
+        }),
+      });
+
+      if (response.url) {
+        router.push(response.url);
+      } else {
+        throw new Error("URL de paiement non reçue");
+      }
+
+    } catch (error) {
+      console.error('❌ Erreur lors du checkout:', error);
+      setErrors(prev => ({
+        ...prev,
+        checkout: error instanceof Error ? error.message : "Erreur lors de la création du paiement"
+      }));
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Une erreur est survenue lors du paiement",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingStates(prev => ({ ...prev, checkout: false }));
     }
   };
 
@@ -273,65 +596,85 @@ const CheckoutPage = () => {
     router.push('/auth/signin');
   };
 
-  const handleApplyPromoCode = async () => {
-    if (!promoCode || isApplyingPromo) return;
+  // Fonction optimisée pour appliquer le code promo
+  const handleApplyPromoCode = async (codeToApply = promoCode) => {
+    if (!codeToApply || isApplyingPromo) return;
 
+    // Vérifier si l'utilisateur est connecté
+    if (!session) {
+      setIsModalOpen(true);
+      return;
+    }
+    
     setIsApplyingPromo(true);
     try {
-      const response = await fetch('/api/secured/promo/verify', {
+      const response = await fetchWithRetry('/api/secured/promo/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: promoCode }),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ code: codeToApply }),
+        credentials: 'include' // Ajouter les credentials pour envoyer le cookie de session
       });
 
-      const data = await response.json();
+      if (response.status === 401) {
+        setIsModalOpen(true);
+        toast({
+          title: 'Connexion requise',
+          description: response.error || 'Vous devez être connecté pour utiliser un code promo',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-      if (data.valid) {
-        setDiscount(data.discount);
-        setAppliedPromoCode(promoCode);
-
-        // Mettre à jour les prix avec la réduction
-        const updatedItems = itemsWithDetails.map(item => ({
-          ...item,
-          details: item.details ? {
-            ...item.details,
-            discountedUnitPrice: item.details.unitPrice * (1 - data.discount / 100),
-            discountedPrice: item.details.totalPrice * (1 - data.discount / 100)
-          } : item.details
-        }));
-
-        setItemsWithDetails(updatedItems);
+      if (response.valid) {
+        setDiscount(response.discount);
+        setAppliedPromoCode(response.id);
+        localStorage.setItem('promoCode', codeToApply);
+        
+        // Recalculer le total avec la nouvelle réduction
+        const subtotal = itemsWithDetails.reduce(
+          (sum, item) => sum + (item.details?.totalPrice || 0),
+          0
+        );
+        const discountAmount = (subtotal * response.discount) / 100;
+        setCartTotal(subtotal - discountAmount + fee);
 
         toast({
-          title: "Code promo appliqué",
-          description: `Réduction de ${data.discount}% appliquée`,
+          title: 'Code promo appliqué',
+          description: response.message || `Réduction de ${response.discount}% appliquée`,
         });
       } else {
+        setPromoCode('');
+        localStorage.removeItem('promoCode');
         toast({
-          title: "Code promo invalide",
-          description: "Ce code promo n'est pas valide",
-          variant: "destructive",
+          title: 'Code promo invalide',
+          description: response.message || 'Ce code promo n\'est pas valide',
+          variant: 'destructive',
         });
       }
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('❌ Erreur lors de l\'application du code promo:', error);
       toast({
-        title: "Erreur",
-        description: "Impossible de vérifier le code promo",
-        variant: "destructive",
+        title: 'Erreur',
+        description: error instanceof Error ? error.message : 'Impossible de vérifier le code promo',
+        variant: 'destructive',
       });
     } finally {
       setIsApplyingPromo(false);
     }
   };
 
+  // Effet pour charger le code promo sauvegardé
   useEffect(() => {
-    const savedCode = localStorage.getItem('promoCode');
-    if (savedCode) {
-      setPromoCode(savedCode);
-      handleApplyPromoCode();
+    if (isMounted) {
+      const savedCode = localStorage.getItem('promoCode');
+      if (savedCode) {
+        setPromoCode(savedCode);
+        handleApplyPromoCode(savedCode);
+      }
     }
-  }, []);
+  }, [isMounted]);
 
   // Mise à jour du calcul du total
   useEffect(() => {
@@ -355,13 +698,24 @@ const CheckoutPage = () => {
     setCartTotal(subtotal - discountAmount + fee);
   };
 
-  // Fonction pour mettre à jour tous les prix
+  // Mise à jour de updateAllPrices avec une meilleure gestion des erreurs
   const updateAllPrices = async () => {
+    if (!itemsWithDetails.length) return;
+
     setIsLoadingDetails(true);
+    console.log("💰 Début de la mise à jour des prix", itemsWithDetails);
+    
     try {
       const updatedItems = await Promise.all(
         itemsWithDetails.map(async (item) => {
-          const response = await fetch('/api/product/price', {
+          console.log(`📦 Mise à jour du prix pour l'article:`, {
+            id: item.id,
+            size: item.size,
+            frameOption: item.frameOption,
+            frameColor: item.frameColor
+          });
+
+          const response = await fetchWithRetry('/api/product/price', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -373,28 +727,34 @@ const CheckoutPage = () => {
             }),
           });
 
-          if (!response.ok) {
-            throw new Error(`Erreur pour l'article ${item.id}`);
+          if (!response.data) {
+            console.error(`❌ Données manquantes pour l'article ${item.id}:`, response);
+            return item; // Garder l'ancien état si erreur
           }
 
-          const { data } = await response.json();
+          const { data } = response;
+          console.log(`✅ Prix mis à jour pour l'article ${item.id}:`, data);
 
           // Calculer les prix avec réduction si un code promo est appliqué
           const discountedUnitPrice = appliedPromoCode 
             ? data.unitPrice * (1 - discount / 100)
-            : undefined;
+            : data.unitPrice;
           const discountedTotalPrice = appliedPromoCode 
             ? data.totalPrice * (1 - discount / 100)
-            : undefined;
+            : data.totalPrice;
 
           return {
             ...item,
             details: {
               ...item.details!,
+              name: data.productInfo.name || item.details?.name || 'Produit sans nom',
+              artisteName: data.productInfo.artisteName || item.details?.artisteName || 'Artiste inconnu',
               totalPrice: data.totalPrice,
               basePrice: data.basePrice,
               framePrice: data.framePrice,
               unitPrice: data.unitPrice,
+              image: data.productInfo.image || item.details?.image || '/placeholder.jpg',
+              stock: data.stock,
               discountedPrice: discountedTotalPrice,
               discountedUnitPrice: discountedUnitPrice,
             }
@@ -402,10 +762,16 @@ const CheckoutPage = () => {
         })
       );
 
-      setItemsWithDetails(updatedItems);
-      recalculateTotal(updatedItems);
+      console.log("✅ Mise à jour des prix terminée:", updatedItems);
+      
+      // Ne mettre à jour que si nous avons des articles valides
+      if (updatedItems.length > 0) {
+        setItemsWithDetails(updatedItems);
+        recalculateTotal(updatedItems);
+      }
+      
     } catch (error) {
-      console.error('Erreur lors de la mise à jour des prix:', error);
+      console.error('❌ Erreur lors de la mise à jour des prix:', error);
       toast({
         title: "Erreur",
         description: "Impossible de mettre à jour les prix",
@@ -416,106 +782,59 @@ const CheckoutPage = () => {
     }
   };
 
-  // Fonction pour générer une clé unique pour chaque item
-  const getItemKey = (item: CheckoutItem) => `${item.id}-${item.size}-${item.frameColor}`;
-
-  // Modifier la fonction handleQuantityChange
-  const handleQuantityChange = async (item: CheckoutItem, newQuantity: number) => {
-    const itemKey = getItemKey(item);
-    
-    try {
-      setLoadingQuantityUpdates(prev => ({ ...prev, [itemKey]: true }));
+  // Ajout d'une vérification supplémentaire pour les articles avec cadre
+  useEffect(() => {
+    if (isMounted && items.length > 0) {
+      const hasFramedItems = items.some(item => item.frameOption === "avec");
+      console.log("🖼️ Articles avec cadre détectés:", hasFramedItems);
       
-      // Vérifier d'abord la disponibilité
-      const response = await fetch('/api/product/price', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productId: item.id,
-          size: item.size,
-          frameOption: item.frameOption,
-          frameColor: item.frameColor,
-          quantity: newQuantity
-        }),
-      });
-
-      const { data, error } = await response.json();
-
-      if (error) {
-        throw new Error(error);
+      if (hasFramedItems) {
+        // Double vérification pour les articles avec cadre
+        const timeoutId = setTimeout(() => {
+          synchronizeCartData();
+        }, 500); // Petit délai pour s'assurer que tout est bien initialisé
+        
+        return () => clearTimeout(timeoutId);
       }
-
-      if (data.stock < newQuantity) {
-        toast({
-          title: "Stock limité",
-          description: `Il ne reste que ${data.stock} exemplaire${data.stock > 1 ? 's' : ''} en stock.`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Mettre à jour la quantité dans le panier
-      updateQuantity(item.id, item.size, item.frameColor, newQuantity);
-      
-      // Calculer les prix avec réduction
-      const discountedUnitPrice = appliedPromoCode 
-        ? data.unitPrice * (1 - discount / 100)
-        : undefined;
-      const discountedTotalPrice = appliedPromoCode 
-        ? data.totalPrice * (1 - discount / 100)
-        : undefined;
-
-      // Mettre à jour les détails de l'item avec les nouveaux prix
-      const updatedItems = itemsWithDetails.map(i => 
-        i.id === item.id && i.size === item.size && i.frameColor === item.frameColor
-          ? {
-              ...i,
-              quantity: newQuantity,
-              details: {
-                ...i.details!,
-                totalPrice: data.totalPrice,
-                basePrice: data.basePrice,
-                framePrice: data.framePrice,
-                unitPrice: data.unitPrice,
-                originalTotal: data.originalTotal,
-                originalUnitPrice: data.originalUnitPrice,
-                discountPercentage: data.discountPercentage,
-                stock: data.stock,
-              }
-            }
-          : i
-      );
-
-      setItemsWithDetails(updatedItems);
-      recalculateTotal(updatedItems);
-
-      // Afficher le message de réduction si applicable
-      if (data.discountPercentage > 0) {
-        toast({
-          title: "Réduction appliquée",
-          description: `Réduction de ${data.discountPercentage}% appliquée sur la quantité !`,
-        });
-      }
-
-    } catch (error) {
-      console.error('Erreur:', error);
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Impossible de mettre à jour la quantité",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingQuantityUpdates(prev => ({ ...prev, [itemKey]: false }));
     }
-  };
+  }, [isMounted, items]);
+
+  // Synchronisation initiale au montage
+  useEffect(() => {
+    if (isMounted && items.length > 0) {
+      synchronizeCartData();
+    }
+  }, [isMounted, items]);
+
+  if (!isMounted) {
+    return null;
+  }
+
+  if (isLoadingDetails) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <CustomLoader />
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
-      <div className="text-center mt-20">
-        <h2 className="text-2xl">Votre panier est vide</h2>
-        <Link href="/">
-          <Button className="mt-4">Voir les produits</Button>
-        </Link>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-white">
+        <div className="text-center space-y-6 max-w-md mx-auto">
+          <h2 className="text-2xl font-semibold text-gray-900 sm:text-3xl">
+            Votre panier est vide
+          </h2>
+          <p className="text-gray-500 text-sm sm:text-base">
+            Vous n'avez pas d'article dans votre panier
+          </p>
+          <Link 
+            href="/" 
+            className="inline-flex items-center justify-center w-full sm:w-auto px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors duration-200"
+          >
+            Découvrir nos produits
+          </Link>
+        </div>
       </div>
     );
   }
@@ -527,193 +846,190 @@ const CheckoutPage = () => {
           Votre Panier
         </h1>
 
-        {isLoadingDetails ? (
-          <div className="mt-12">
-            <CustomLoader />
-          </div>
-        ) : (
-          <div className="mt-12 lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-12 xl:gap-x-16">
-            {/* Liste des produits */}
-            <div className="lg:col-span-7">
-              <ul className="divide-y divide-gray-200 border-b border-t border-gray-200">
-                {itemsWithDetails.map((item) => (
-                  <li key={`${item.id}-${item.size}-${item.frameColor}`} className="flex py-6 sm:py-10">
+        <div className="mt-12 lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-12 xl:gap-x-16">
+          {/* Liste des produits */}
+          <div className="lg:col-span-7">
+            <ul className="divide-y divide-gray-200 border-b border-t border-gray-200">
+              {itemsWithDetails.map((item) => {
+                const isDiscounted = promotion?.appliedTo?.id === item.id && 
+                                    promotion?.appliedTo?.size === item.size && 
+                                    promotion?.appliedTo?.frameColor === item.frameColor;
+                
+                return (
+                  <li key={getItemKey(item)} className="flex py-6 sm:py-10">
                     <div className="flex-shrink-0">
-                      <Image
-                        src={item.details?.image || ''}
-                        alt={item.details?.name || ''}
-                        width={100}
-                        height={100}
-                        className="object-cover rounded"
-                      />
+                      <Link href={`/sales/${item.id}`}>
+                        <Image
+                          src={item.details?.image || '/placeholder.jpg'}
+                          alt={`${item.details?.name || 'Image du produit'} - Format: ${item.size}${item.frameOption === "avec" ? ` avec cadre ${item.frameColor}` : ''}`}
+                          width={100}
+                          height={100}
+                          className="object-cover rounded w-auto h-auto hover:opacity-80 transition-opacity"
+                          style={{ aspectRatio: '1/1' }}
+                          priority
+                        />
+                      </Link>
                     </div>
 
+                    {/* Détails du produit */}
                     <div className="ml-4 flex flex-1 flex-col justify-between sm:ml-6">
                       <div>
-                        <h3 className="text-base font-medium">{item.details?.name}</h3>
+                        <Link 
+                          href={`/sales/${item.id}`}
+                          className="group"
+                        >
+                          <h3 className="text-base font-medium group-hover:text-gray-600 transition-colors">
+                            {item.details?.name}
+                          </h3>
+                        </Link>
                         <p className="mt-1 text-sm text-gray-500">
                           Format: {item.size}
                           {item.frameOption === "avec" && ` - Cadre: ${item.frameColor}`}
                         </p>
-                        <p className="mt-1 text-sm text-gray-500">
-                          Artiste: {item.details?.artisteName}
-                        </p>
-                        <div className="mt-1 text-sm">
-                          <span className="font-medium flex items-center gap-2">
-                            {item.details?.discountPercentage ? (
-                              <>
-                                <span className="line-through text-gray-500">
-                                  {formatPrice(item.details.originalUnitPrice || item.details.unitPrice)}
-                                </span>
-                                <span className="text-green-600">
-                                  {formatPrice(item.details.unitPrice)}
-                                </span>
-                                <span className="text-xs text-green-600">
-                                  (-{item.details.discountPercentage}%)
-                                </span>
-                              </>
-                            ) : (
-                              formatPrice(item.details?.unitPrice || 0)
-                            )}
-                          </span>
-                          <span className="ml-2">× {item.quantity}</span>
-                        </div>
-                        <p className="mt-1 font-medium flex items-center gap-2">
-                          Total: 
-                          {item.details?.discountPercentage ? (
-                            <>
-                              <span className="line-through text-gray-500">
-                                {formatPrice(item.details.originalTotal || (item.details.unitPrice * item.quantity))}
-                              </span>
-                              <span className="text-green-600">
-                                {formatPrice(item.details.totalPrice)}
-                              </span>
-                            </>
-                          ) : (
-                            formatPrice(item.details?.totalPrice || 0)
-                          )}
-                        </p>
-                      </div>
-
-                      <div className="mt-4 flex items-center justify-between">
-                        <div className="mt-4 flex items-center space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleQuantityChange(item, item.quantity - 1)}
-                            disabled={
-                              item.quantity <= 1 || 
-                              loadingQuantityUpdates[getItemKey(item)]
-                            }
-                          >
-                            {loadingQuantityUpdates[getItemKey(item)] ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              '-'
-                            )}
-                          </Button>
-                          <span className="text-center w-8">{item.quantity}</span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleQuantityChange(item, item.quantity + 1)}
-                            disabled={
-                              item.quantity >= (item.details?.stock || 0) || 
-                              loadingQuantityUpdates[getItemKey(item)]
-                            }
-                          >
-                            {loadingQuantityUpdates[getItemKey(item)] ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              '+'
-                            )}
-                          </Button>
-                          {item.quantity === (item.details?.stock || 0) && (
-                            <span className="text-xs text-orange-600 ml-2">
-                              Stock maximum atteint
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => removeItem(item.id, item.size, item.frameColor)}
-                          className="text-sm text-red-600 hover:text-red-800"
+                        <Link 
+                          href={`/sales/${item.id}`}
+                          className="group"
                         >
-                          Supprimer
-                        </button>
+                          <p className="mt-1 text-sm text-gray-500 group-hover:text-gray-600 transition-colors">
+                            Artiste: {item.details?.artisteName}
+                          </p>
+                        </Link>
+
+                        {/* Prix et quantité */}
+                        <div className="mt-4 flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleQuantityChange(item, item.quantity - 1)}
+                              disabled={item.quantity <= 1 || loadingQuantityUpdates[getItemKey(item)]}
+                            >
+                              {loadingQuantityUpdates[getItemKey(item)] ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                '-'
+                              )}
+                            </Button>
+                            <span className="text-center w-8">{item.quantity}</span>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleQuantityChange(item, item.quantity + 1)}
+                              disabled={
+                                item.quantity >= (item.details?.stock || 0) || 
+                                loadingQuantityUpdates[getItemKey(item)]
+                              }
+                            >
+                              {loadingQuantityUpdates[getItemKey(item)] ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                '+'
+                              )}
+                            </Button>
+                          </div>
+                          <button
+                            onClick={() => removeItem(item.id, item.size, item.frameColor)}
+                            className="text-sm text-red-600 hover:text-red-800"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+
+                        {/* Prix détaillés avec promotion */}
+                        <div className="mt-4 space-y-1 text-sm">
+                          <div className="flex justify-between text-gray-500">
+                            <span>Prix unitaire:</span>
+                            <span>{formatPrice(item.details?.basePrice || 0)}</span>
+                          </div>
+                          {item.frameOption === "avec" && (
+                            <div className="flex justify-between text-gray-500">
+                              <span>Cadre:</span>
+                              <span>+ {formatPrice(item.details?.framePrice || 0)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between font-medium">
+                            <span>Prix unitaire total:</span>
+                            <span>{formatPrice(item.details?.unitPrice || 0)}</span>
+                          </div>
+                          <div className="flex justify-between font-medium text-black pt-2 border-t">
+                            <span>
+                              Total ({item.quantity} {item.quantity > 1 ? 'articles' : 'article'})
+                              {isDiscounted && (
+                                <span className="text-green-600 ml-2">
+                                  (1 article offert !)
+                                </span>
+                              )}:
+                            </span>
+                            <div className="text-right">
+                              {isDiscounted ? (
+                                <>
+                                  <span className="line-through text-gray-500 mr-2">
+                                    {formatPrice((item.details?.totalPrice || 0))}
+                                  </span>
+                                  <span className="text-green-600">
+                                    {formatPrice((item.details?.totalPrice || 0) - (item.details?.unitPrice || 0))}
+                                  </span>
+                                </>
+                              ) : (
+                                <span>{formatPrice((item.details?.totalPrice || 0))}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </li>
-                ))}
-              </ul>
-            </div>
+                );
+              })}
+            </ul>
+          </div>
 
-            {/* Résumé de la commande */}
-            <div className="mt-16 rounded-lg bg-gray-50 px-4 py-6 sm:p-6 lg:col-span-5 lg:mt-0 lg:p-8">
-              <h2 className="text-lg font-medium text-gray-900">Résumé de la commande</h2>
+          {/* Résumé de la commande */}
+          <div className="mt-16 rounded-lg bg-gray-50 px-4 py-6 sm:p-6 lg:col-span-5 lg:mt-0 lg:p-8">
+            <h2 className="text-lg font-medium text-gray-900">Résumé de la commande</h2>
+            <div className="mt-6 space-y-4">
+              {/* Prix total avant réduction */}
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">Sous-total</p>
+                <p className="text-sm font-medium">
+                  {formatPrice(itemsWithDetails.reduce((sum, item) => 
+                    sum + (item.details?.totalPrice || 0),
+                    0
+                  ))}
+                </p>
+              </div>
 
-              <div className="mt-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600">Sous-total</p>
-                  <div className="text-sm font-medium">
-                    {appliedPromoCode ? (
-                      <div className="flex items-center gap-2">
-                        <span className="line-through text-gray-500">
-                          {formatPrice(cartTotal - fee)}
-                        </span>
-                        <span className="text-green-600">
-                          {formatPrice((cartTotal - fee) * (1 - discount / 100))}
-                        </span>
-                      </div>
-                    ) : (
-                      formatPrice(cartTotal - fee)
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600">Frais de livraison</p>
-                  <p className="text-sm font-medium">{formatPrice(fee)}</p>
-                </div>
-
-                {appliedPromoCode && (
-                  <div className="flex items-center justify-between text-sm text-green-600">
-                    <p>Réduction ({discount}%)</p>
-                    <p>-{formatPrice((cartTotal - fee) * (discount / 100))}</p>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between border-t border-gray-200 pt-4">
-                  <p className="text-base font-medium">Total</p>
-                  <div className="text-base font-medium">
-                    {appliedPromoCode ? (
-                      <div className="flex items-center gap-2">
-                        <span className="line-through text-gray-500">
-                          {formatPrice(cartTotal)}
-                        </span>
-                        <span className="text-green-600">
-                          {formatPrice(cartTotal * (1 - discount / 100))}
-                        </span>
-                      </div>
-                    ) : (
-                      formatPrice(cartTotal)
-                    )}
-                  </div>
-                </div>
-
-                {/* Code promo */}
-                <div className="mt-4">
-                  <div className="flex space-x-2">
-                    <Input
-                      type="text"
-                      value={promoCode}
-                      onChange={(e) => setPromoCode(e.target.value)}
-                      placeholder="Code promo"
-                      disabled={!!appliedPromoCode}
-                    />
+              {/* Code promo */}
+              <div className="flex flex-col space-y-2">
+                <p className="text-sm font-medium">Code promo</p>
+                <div className="flex space-x-2">
+                  <Input
+                    type="text"
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    placeholder="Entrez votre code"
+                    disabled={!!appliedPromoCode}
+                    className="flex-1"
+                  />
+                  {appliedPromoCode ? (
                     <Button
-                      onClick={handleApplyPromoCode}
-                      disabled={isApplyingPromo || !promoCode || !!appliedPromoCode}
+                      onClick={() => {
+                        setPromoCode('');
+                        setAppliedPromoCode(null);
+                        setDiscount(0);
+                        localStorage.removeItem('promoCode');
+                      }}
                       variant="outline"
+                      className="whitespace-nowrap"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => handleApplyPromoCode()}
+                      disabled={isApplyingPromo || !promoCode}
+                      variant="outline"
+                      className="whitespace-nowrap"
                     >
                       {isApplyingPromo ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -721,34 +1037,74 @@ const CheckoutPage = () => {
                         'Appliquer'
                       )}
                     </Button>
-                  </div>
+                  )}
                 </div>
               </div>
 
-              <Button
-                onClick={handleCheckout}
-                className="w-full mt-6"
-                disabled={isLoading || itemsWithDetails.length === 0}
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Procéder au paiement'
-                )}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+              {/* Réduction code promo */}
+              {appliedPromoCode && discount > 0 && (
+                <div className="flex items-center justify-between text-green-600">
+                  <p className="text-sm">Code promo ({discount}%)</p>
+                  <p className="text-sm font-medium">
+                    -{formatPrice(
+                      itemsWithDetails.reduce((sum, item) => 
+                        sum + (item.details?.totalPrice || 0),
+                        0
+                      ) * (discount / 100)
+                    )}
+                  </p>
+                </div>
+              )}
 
-      <CustomAlertDialog
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Connexion requise"
-        description="Vous devez être connecté pour procéder au paiement."
-        actionText="Se connecter"
-        onActionClick={() => router.push('/auth/signin')}
-      />
+              {/* Frais de livraison */}
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">Frais de livraison</p>
+                <p className="text-sm font-medium">{formatPrice(fee)}</p>
+              </div>
+
+              {/* Total final */}
+              <div className="flex items-center justify-between border-t border-gray-200 pt-4">
+                <p className="text-base font-medium">Total</p>
+                <p className="text-base font-medium">
+                  {formatPrice(
+                    // Prix total initial
+                    itemsWithDetails.reduce((sum, item) => 
+                      sum + (item.details?.totalPrice || 0),
+                      0
+                    )
+                    // Appliquer la réduction du code promo
+                    * (1 - (discount / 100))
+                    // Ajouter les frais de livraison
+                    + fee
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleCheckout}
+              className="w-full mt-6"
+              disabled={isLoading || itemsWithDetails.length === 0}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Procéder au paiement'
+              )}
+            </Button>
+          </div>
+
+          {/* Modal de connexion */}
+          <CustomAlertDialog
+            isOpen={isModalOpen}
+            onClose={handleClose}
+            title="Connexion requise"
+            description="Vous devez être connecté pour procéder au paiement. Veuillez vous connecter ou vous inscrire."
+            actionText="Se connecter"
+            onActionClick={redirectToSignIn}
+          />
+        </div>
+      </div>
     </div>
   );
 };

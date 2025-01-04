@@ -45,7 +45,7 @@ function VerificationForm() {
 
     console.log("Numéro à vérifier:", number);
     try {
-      const response = await fetch('/api/verification', {
+      const response = await fetch('/api/certificat/verification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

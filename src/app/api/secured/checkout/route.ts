@@ -16,23 +16,118 @@ function generateIdentificationNumber(): string {
 }
 
 export async function POST(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  if (!token) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
-  }
-
   try {
-    const { cartItems, promoCodeId } = await req.json();
-    const lineItems = [];
+    console.log("\n🔄 DÉBUT DU PROCESSUS CHECKOUT");
 
-    // Rechercher ou créer le customer Stripe
-    let customer;
-    const email = token.email as string;
+    // 1. Vérification de l'authentification
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    console.log("👤 Authentification:", {
+      userId: token?.sub,
+      email: token?.email,
+      authenticated: !!token
+    });
+
+    if (!token) {
+      console.log("❌ Authentification échouée: Token manquant");
+      return NextResponse.json(
+        { error: 'Vous devez être connecté pour effectuer cette action.' },
+        { status: 401 }
+      );
+    }
+
+    // 2. Récupération des données
+    const { cartItems, promoCodeId } = await req.json();
+    console.log("🛒 Données du panier reçues:", {
+      nombreArticles: cartItems.length,
+      promoCodeId: promoCodeId || 'aucun',
+      articles: cartItems.map((item: any) => ({
+        id: item.id,
+        size: item.size,
+        frameOption: item.frameOption,
+        quantity: item.quantity
+      }))
+    });
+
+    // 3. Vérification du panier
+    console.log("🔍 Vérification du panier...");
+    const verificationResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/verification`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cartItems }),
+    });
+
+    const verificationData = await verificationResponse.json();
+    console.log("✅ Résultat de la vérification:", {
+      status: verificationResponse.status,
+      hasChanges: verificationData.hasChanges,
+      updates: verificationData.updates || [],
+      promotion: verificationData.promotion || null
+    });
     
-    // Rechercher si le customer existe déjà
+    if (!verificationResponse.ok) {
+      console.log("❌ Échec de la vérification:", verificationData.error);
+      return NextResponse.json(
+        { error: verificationData.error || 'Erreur lors de la vérification du panier' },
+        { status: verificationResponse.status }
+      );
+    }
+
+    if (verificationData.hasChanges) {
+      console.log("⚠️ Modifications nécessaires:", verificationData.updates);
+      return NextResponse.json(
+        { 
+          error: 'Le panier nécessite des mises à jour',
+          updates: verificationData.updates 
+        },
+        { status: 400 }
+      );
+    }
+
+    // 4. Vérification du code promo
+    let promoCode = null;
+    if (promoCodeId) {
+      console.log("🎫 Vérification du code promo:", promoCodeId);
+      const promoResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/secured/promo/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': req.headers.get('cookie') || '',
+        },
+        body: JSON.stringify({ code: promoCodeId }),
+      });
+
+      const promoData = await promoResponse.json();
+      console.log("🏷️ Résultat code promo:", {
+        status: promoResponse.status,
+        valid: promoData.valid,
+        discount: promoData.discount,
+        message: promoData.message,
+        code: promoCodeId
+      });
+
+      if (!promoResponse.ok) {
+        console.log("❌ Code promo invalide:", promoData.error);
+        return NextResponse.json(
+          { error: promoData.error || 'Code promo invalide' },
+          { status: promoResponse.status }
+        );
+      }
+
+      if (promoData.valid) {
+        promoCode = promoData;
+        console.log("✅ Code promo validé:", {
+          id: promoData.id,
+          discount: promoData.discount,
+          couponId: promoData.couponId
+        });
+      }
+    }
+
+    // 5. Gestion du customer Stripe
+    const email = token.email as string;
+    console.log("👥 Recherche du customer Stripe:", email);
+    let customer;
+    
     const existingCustomers = await stripe.customers.list({
       email: email,
       limit: 1,
@@ -40,85 +135,132 @@ export async function POST(req: NextRequest) {
 
     if (existingCustomers.data.length > 0) {
       customer = existingCustomers.data[0];
+      console.log("✅ Customer existant trouvé:", {
+        customerId: customer.id,
+        email: customer.email
+      });
     } else {
-      // Créer un nouveau customer si nécessaire
       customer = await stripe.customers.create({
         email: email,
       });
+      console.log("✅ Nouveau customer créé:", {
+        customerId: customer.id,
+        email: customer.email
+      });
     }
 
-    for (const item of cartItems) {
+    // 6. Création des line items
+    console.log("📝 Création des line items...");
+    const lineItems = await Promise.all(cartItems.map(async (item: any) => {
+      console.log(`📦 Traitement de l'article ${item.id}...`);
+      
+      // Récupérer les données du produit depuis Firestore
       const productRef = firestoreAdmin.collection('uploads').doc(item.id);
       const productDoc = await productRef.get();
 
       if (!productDoc.exists) {
-        return NextResponse.json(
-          { message: `Le produit ${item.id} n'existe plus.` },
-          { status: 400 }
-        );
+        throw new Error(`Le produit ${item.id} n'existe plus.`);
       }
 
       const productData = productDoc.data();
-      const sizeInfoIndex = productData?.sizes.findIndex(
-        (size: any) => size.size === item.format
-      );
-    
-      const sizeInfo = productData?.sizes[sizeInfoIndex];
-      console.log("Size info:", sizeInfo);
-      console.log("Next serial number:", sizeInfo.nextSerialNumber);
+      if (!productData) {
+        throw new Error(`Données invalides pour le produit ${item.id}`);
+      }
+      
+      const sizeInfo = productData.sizes.find((s: any) => s.size === item.size);
 
-      if (!sizeInfo || sizeInfo.stock < item.quantity) {
-        return NextResponse.json(
-          {
-            message: `Stock insuffisant pour le produit ${item.name} (${item.format}). Disponible : ${sizeInfo?.stock || 0}.`,
-          },
-          { status: 400 }
-        );
+      if (!sizeInfo) {
+        throw new Error(`Format ${item.size} non trouvé pour le produit ${item.id}`);
       }
 
-      if (sizeInfo.price !== item.price) {
-        return NextResponse.json(
-          {
-            message: `Le prix du produit ${item.name} (${item.format}) a changé.`,
-          },
-          { status: 400 }
-        );
+      console.log("📊 Informations du produit:", {
+        id: item.id,
+        size: item.size,
+        nextSerialNumber: sizeInfo.nextSerialNumber,
+        stock: sizeInfo.stock
+      });
+
+      // Vérifier le stock une dernière fois
+      if (sizeInfo.stock < item.quantity) {
+        throw new Error(`Stock insuffisant pour le produit ${productData.name} (${item.size}). Disponible : ${sizeInfo.stock}.`);
       }
 
-      const item_name_format = item.name + ' (' + item.format + ')';
-
-      // Modifier la génération des identificationNumbers
+      // Générer les numéros d'identification avec numéros de série
       const identificationNumbersMap = Array.from(
         { length: item.quantity },
         (_, index) => ({
           serialNumber: (sizeInfo.nextSerialNumber + index).toString().padStart(2, '0'),
           identificationNumber: generateIdentificationNumber(),
-          size: sizeInfo.size
+          size: item.size
         })
       );
 
-      lineItems.push({
+      // Récupérer le prix à jour
+      const priceResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/product/price`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: item.id,
+          size: item.size,
+          frameOption: item.frameOption,
+          frameColor: item.frameColor,
+          quantity: item.quantity
+        }),
+      });
+
+      const { data: priceData } = await priceResponse.json();
+      if (!priceResponse.ok) {
+        throw new Error(`Erreur lors de la récupération du prix pour ${item.id}`);
+      }
+
+      return {
         price_data: {
           currency: 'eur',
           product_data: {
-            name: item_name_format,
-            images: [item.image],
+            name: `${priceData.productInfo.name} - ${item.size}${item.frameOption === "avec" ? ` avec cadre ${item.frameColor}` : ''}`,
+            images: [priceData.productInfo.image],
             metadata: {
               id: item.id,
-              imageUrl: item.image,
-              artisteName: item.artisteName,
-              artisteEmail: item.artisteEmail,
-              artisteId: item.artisteId,
-              format: item.format,
-              serialNumber: sizeInfo.nextSerialNumber,
+              imageUrl: priceData.productInfo.image,
+              size: item.size,
+              frameOption: item.frameOption,
+              frameColor: item.frameColor || 'none',
+              artisteName: priceData.productInfo.artisteName,
+              artisteEmail: priceData.productInfo.artisteEmail,
+              artisteId: priceData.productInfo.artisteId,
+              nextSerialNumber: sizeInfo.nextSerialNumber,
               identificationNumbers: JSON.stringify(identificationNumbersMap),
             },
           },
-          unit_amount: sizeInfo.price * 100,
+          unit_amount: Math.round(priceData.unitPrice * 100),
         },
         quantity: item.quantity,
+      };
+    }));
+
+    // Log détaillé des line items
+    console.log("\n📦 Détails des line items créés:");
+    lineItems.forEach((item, index) => {
+      console.log(`\n🎨 Item ${index + 1}:`, {
+        nom: item.price_data.product_data.name,
+        quantité: item.quantity,
+        prixUnitaire: `${item.price_data.unit_amount / 100}€`,
+        total: `${(item.price_data.unit_amount * item.quantity) / 100}€`
       });
-    }
+      
+      console.log(`📋 Métadonnées de l'item ${index + 1}:`, {
+        ...item.price_data.product_data.metadata,
+        identificationNumbers: JSON.parse(item.price_data.product_data.metadata.identificationNumbers)
+      });
+    });
+
+    console.log("\n💰 Total des articles:", {
+      nombreArticles: lineItems.reduce((sum, item) => sum + item.quantity, 0),
+      montantTotal: `${lineItems.reduce((sum, item) => sum + (item.price_data.unit_amount * item.quantity), 0) / 100}€`
+    });
+
+    // 7. Création de la session Stripe
+    console.log("💳 Création de la session Stripe...");
     const stripeSession = await stripe.checkout.sessions.create({
       customer: customer.id,
       payment_method_types: ['card'],
@@ -162,23 +304,38 @@ export async function POST(req: NextRequest) {
         enabled: true,
       },
       metadata: {
-        userId: token.uid as string,
+        userId: token.sub as string,
+        cartItemsCount: cartItems.length,
+        promoCode: promoCodeId || '',
       },
-      discounts: promoCodeId ? [
+      discounts: promoCodeId && promoCode ? [
         {
-          promotion_code: promoCodeId,
+          promotion_code: promoCode.id,
         },
       ] : undefined,
     });
+
+    console.log("✅ Session Stripe créée avec succès:", {
+      sessionId: stripeSession.id,
+      customerId: customer.id,
+      totalItems: cartItems.length,
+      promoApplied: !!promoCode,
+      url: stripeSession.url
+    });
+
+    return NextResponse.json({ url: stripeSession.url });
+
+  } catch (error: any) {
+    console.error('❌ Erreur lors de la création de la session Stripe:', {
+      error: error.message,
+      code: error.statusCode,
+      type: error.type
+    });
     return NextResponse.json(
-      { url: stripeSession.url },
-      { status: 200 }
-    );
-  } catch (err: any) {
-    console.error('Erreur Stripe:', err);
-    return NextResponse.json(
-      { message: err.message },
-      { status: err.statusCode || 500 }
+      { 
+        error: error.message || 'Une erreur est survenue lors de la création de la session de paiement' 
+      },
+      { status: error.statusCode || 500 }
     );
   }
 }

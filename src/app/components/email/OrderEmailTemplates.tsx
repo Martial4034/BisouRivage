@@ -7,7 +7,13 @@ interface Product {
   imageUrl: string;
   artisteName: string;
   name: string;
-  format: string;
+  size: string;
+  frameOption: string;
+  frameColor?: string;
+  identificationNumbers: Array<{
+    serialNumber: string;
+    identificationNumber: string;
+  }>;
 }
 
 interface OrderSummaryEmailTemplateProps {
@@ -15,6 +21,9 @@ interface OrderSummaryEmailTemplateProps {
   deliveryDate: string;
   products: Product[];
   totalAmount: number;
+  subtotal: number;
+  discount?: number;
+  shippingCost: number;
 }
 
 // Global styles for the email
@@ -94,6 +103,9 @@ export const OrderSummaryEmailTemplate: React.FC<Readonly<OrderSummaryEmailTempl
   deliveryDate,
   products,
   totalAmount,
+  subtotal,
+  discount,
+  shippingCost,
 }) => (
   <html lang="fr">
     <head>
@@ -127,8 +139,16 @@ export const OrderSummaryEmailTemplate: React.FC<Readonly<OrderSummaryEmailTempl
                 <img src={product.imageUrl} alt={product.name} style={imageStyle} />
                 <div style={productDetailsStyle}>
                   <strong>{product.name}</strong> <br />
-                  Format : {product.format} <br />
-                  Artiste : {product.artisteName}
+                  Format : {product.size} <br />
+                  {product.frameOption === "avec" && (
+                    <>Cadre : {product.frameColor}<br /></>
+                  )}
+                  Artiste : {product.artisteName}<br />
+                  {product.identificationNumbers.map((id, idx) => (
+                    <small key={idx}>
+                      N° {id.serialNumber} - {id.identificationNumber}<br />
+                    </small>
+                  ))}
                 </div>
               </td>
               <td style={tableCellStyle}>{product.quantity}</td>
@@ -138,9 +158,16 @@ export const OrderSummaryEmailTemplate: React.FC<Readonly<OrderSummaryEmailTempl
         </tbody>
       </table>
 
-      <p style={textStyle}>
-        Montant total : <strong>{totalAmount.toFixed(2)} €</strong>
-      </p>
+      <div style={textStyle}>
+        <p>Sous-total : {subtotal.toFixed(2)} €</p>
+        {discount && discount > 0 && (
+          <p>Réduction : -{discount.toFixed(2)} €</p>
+        )}
+        <p>Frais de livraison : {shippingCost.toFixed(2)} €</p>
+        <p style={{ fontWeight: 'bold' }}>
+          Montant total : {totalAmount.toFixed(2)} €
+        </p>
+      </div>
 
       <p style={footerStyle}>
         Si vous avez des questions concernant votre commande, vous pouvez nous contacter à l'adresse suivante : bisourivage@gmail.com.

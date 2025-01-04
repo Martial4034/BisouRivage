@@ -49,26 +49,27 @@ export async function POST(req: NextRequest) {
 
   async function handleCheckoutSession(session: Stripe.Checkout.Session) {
     try {
-      // Récupérer les détails de la session
-      const stripeSession = await stripe.checkout.sessions.retrieve(
-        session.id,
-        {
-          expand: ["line_items", "line_items.data.price.product"],
-        }
-      );
+      console.log("🔄 Traitement de la session de paiement:", session.id);
 
+      // Récupérer les détails de la session
+      const stripeSession = await stripe.checkout.sessions.retrieve(session.id, {
+        expand: ["line_items", "line_items.data.price.product"],
+      });
+
+      console.log("📦 Récupération des line items...");
       const lineItems = stripeSession.line_items?.data || [];
 
       // Extraire les informations des produits
       const products = lineItems.map((item: any) => {
         const productMetadata = item.price?.product?.metadata || {};
-        let identificationNumbersMap = [];
+        let identificationNumbers = [];
         
         try {
-          identificationNumbersMap = JSON.parse(productMetadata.identificationNumbers || '[]');
+          identificationNumbers = JSON.parse(productMetadata.identificationNumbers || '[]');
+          console.log(`✅ Numéros d'identification parsés pour ${productMetadata.id}:`, identificationNumbers);
         } catch (error) {
-          console.error('Erreur parsing identificationNumbers:', error);
-          identificationNumbersMap = [];
+          console.error(`❌ Erreur parsing identificationNumbers pour ${productMetadata.id}:`, error);
+          identificationNumbers = [];
         }
 
         return {
@@ -78,28 +79,36 @@ export async function POST(req: NextRequest) {
           imageUrl: productMetadata.imageUrl || "",
           artisteEmail: productMetadata.artisteEmail || "unknown",
           artisteName: productMetadata.artisteName || "Artiste Anonyme",
-          artisteId: productMetadata.artisteId || "Id non connu",
+          artisteId: productMetadata.artisteId || "unknown",
           name: item.price?.product?.name || "unknown",
-          format: productMetadata.format || "unknown",
-          serialNumber: productMetadata.serialNumber || "0",
-          identificationNumbers: identificationNumbersMap.map((item: any) => ({
-            serialNumber: item.serialNumber,
-            identificationNumber: item.identificationNumber
-          }))
+          size: productMetadata.size || "unknown",
+          frameOption: productMetadata.frameOption || "sans",
+          frameColor: productMetadata.frameColor,
+          identificationNumbers: identificationNumbers
         };
       });
 
-      // Calcul de la date de livraison (par exemple, 15 jours après la commande)
+      console.log("📅 Calcul de la date de livraison...");
       const deliveryDate = new Date();
       deliveryDate.setDate(deliveryDate.getDate() + 15);
 
-      // Obtenir la liste des artistes impliqués dans la commande
+      // Obtenir la liste des artistes impliqués
       const artistIds = Array.from(new Set(products.map((p) => p.artisteId)));
+      const artistStatuses = Object.fromEntries(
+        artistIds.map(id => [id, 'Pas Commencé'])
+      );
 
-      // Initialiser les statuts des artistes à "Pas Commencé"
-      const artistStatuses: { [key: string]: string } = {};
-      artistIds.forEach((id) => {
-        artistStatuses[id] = 'Pas Commencé';
+      // Calculer les montants
+      const subtotal = lineItems.reduce((sum, item) => 
+        sum + ((item.price?.unit_amount ?? 0) * (item.quantity ?? 0)), 0) / 100;
+      const shippingCost = 12.50; // Frais de livraison fixes
+      const discount = session.total_details?.amount_discount ? session.total_details.amount_discount / 100 : 0;
+
+      console.log("💰 Détails des montants:", {
+        subtotal,
+        shippingCost,
+        discount,
+        total: (session.amount_total ?? 0) / 100
       });
 
       // Préparer les données de la commande
@@ -109,100 +118,108 @@ export async function POST(req: NextRequest) {
         userEmail: session.customer_details?.email || "",
         createdAt: FieldValue.serverTimestamp(),
         deliveryDate: deliveryDate,
+        subtotal,
+        shippingCost,
+        discount,
         totalAmount: (session.amount_total ?? 0) / 100,
         shippingAddress: session.customer_details?.address || {},
-        paymentId: session.payment_intent || "Transaction inconnue",
+        paymentId: session.payment_intent || "unknown",
         products,
         artistStatuses,
+        promoCode: session.metadata?.promoCode || null
       };
 
       // Enregistrer la commande dans Firestore
+      console.log("💾 Enregistrement de la commande...");
       const orderId = session.id.slice(-10);
       const orderRef = firestoreAdmin.collection("orders").doc(orderId);
       await orderRef.set(orderData);
 
-      // Mettre à jour le stock des produits
+      // Mettre à jour le stock et les numéros de série
+      console.log("🔄 Mise à jour des stocks...");
       for (const product of products) {
         const productRef = firestoreAdmin.collection("uploads").doc(product.productId);
-
-        const serialNumbers = await firestoreAdmin.runTransaction(async (transaction) => {
+        
+        await firestoreAdmin.runTransaction(async (transaction) => {
           const productDoc = await transaction.get(productRef);
           if (!productDoc.exists) {
             throw new Error(`Product ${product.productId} does not exist.`);
           }
 
           const productData = productDoc.data();
-          const sizes = productData?.sizes || [];
-          const formatIndex = sizes.findIndex(
-            (size: { size: string }) => size.size === product.format
-          );
-
-          if (formatIndex === -1) {
-            throw new Error(
-              `Format ${product.format} for product ID ${product.productId} does not exist.`
-            );
+          if (!productData) {
+            throw new Error(`Invalid data for product ${product.productId}`);
           }
 
-          const currentStock = sizes[formatIndex].stock;
-          const currentSerialNumber = sizes[formatIndex].nextSerialNumber || 1;
-          const currentSize = sizes[formatIndex].size;
-
-          // Générer les numéros de série pour cette commande
-          const generatedSerialNumbers = Array.from({ length: product.quantity }, (_, i) => 
-            (currentSerialNumber + i).toString().padStart(2, '0')
+          const sizes = productData.sizes || [];
+          const sizeIndex = sizes.findIndex(
+            (s: any) => s.size === product.size
           );
 
-          // Mise à jour du stock et du prochain numéro de série
-          sizes[formatIndex].stock = currentStock - product.quantity;
-          sizes[formatIndex].nextSerialNumber = currentSerialNumber + product.quantity;
+          if (sizeIndex === -1) {
+            throw new Error(`Size ${product.size} not found for product ${product.productId}`);
+          }
 
-          // Créer un objet pour stocker les identificationNumbers avec la taille
-          const identificationNumbersWithSize = product.identificationNumbers.map((idNum: any) => ({
+          // Mise à jour du stock
+          const currentStock = sizes[sizeIndex].stock;
+          if (currentStock < product.quantity) {
+            throw new Error(`Insufficient stock for product ${product.productId}`);
+          }
+
+          sizes[sizeIndex].stock = currentStock - product.quantity;
+
+          // Ajouter les numéros d'identification au produit
+          const identificationNumbersWithDetails = product.identificationNumbers.map((idNum: any) => ({
             ...idNum,
-            size: currentSize,
-            productId: product.productId
+            size: product.size,
+            frameOption: product.frameOption,
+            frameColor: product.frameColor,
+            productId: product.productId,
+            orderId: orderId
           }));
 
-          // Mettre à jour le document avec les sizes et serialNumbers
-          transaction.update(productRef, { 
+          // Mettre à jour le document
+          transaction.update(productRef, {
             sizes,
-            identificationNumbers: FieldValue.arrayUnion(...identificationNumbersWithSize)
+            identificationNumbers: FieldValue.arrayUnion(...identificationNumbersWithDetails)
           });
 
-          return generatedSerialNumbers;
+          console.log(`✅ Stock mis à jour pour ${product.productId}:`, {
+            size: product.size,
+            newStock: sizes[sizeIndex].stock,
+            identificationNumbersAdded: identificationNumbersWithDetails.length
+          });
         });
-
-        // Ajouter les numéros de série au produit dans la commande
-        product.serialNumber = serialNumbers.join(', ');
       }
 
-      // Préparer les données de l'email
+      // Préparer et envoyer l'email de confirmation
+      console.log("📧 Préparation de l'email...");
       const emailData = {
         userEmail: orderData.userEmail,
         deliveryDate: orderData.deliveryDate.toLocaleDateString("fr-FR"),
         products: orderData.products,
         totalAmount: orderData.totalAmount,
+        subtotal: orderData.subtotal,
+        discount: orderData.discount,
+        shippingCost: orderData.shippingCost
       };
 
-      console.log("Email data:", emailData);
-
-      // Envoyer l'email de confirmation
+      console.log("📨 Envoi de l'email de confirmation...");
       try {
         await resend.emails.send({
-          from: "support@bisourivage.fr",
+          from: "Bisourivage <support@bisourivage.fr>",
           to: [orderData.userEmail],
-          subject: "Votre récapitulatif de commande",
+          subject: "Votre commande Bisourivage - Confirmation",
           react: OrderSummaryEmailTemplate({ ...emailData }),
         });
+        console.log("✅ Email envoyé avec succès");
       } catch (emailError) {
-        console.error("Error sending confirmation email:", emailError);
+        console.error("❌ Erreur lors de l'envoi de l'email:", emailError);
       }
+
     } catch (error) {
-      console.error("Error handling checkout session:", error);
-      return NextResponse.json(
-        { error: "Error during checkout session." },
-        { status: 500 }
-      );
+      console.error("❌ Erreur lors du traitement de la session:", error);
+      throw error;
     }
   }
 

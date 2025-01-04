@@ -111,7 +111,19 @@ export function TopNavBar() {
                   )}
                   <span className="sr-only">Toggle user menu</span>
                 </Button>
-                <span className="text-sm text-black hover:text-gray-600">mon compte</span>
+                <span 
+                  className="text-sm text-black hover:text-gray-600"
+                  onClick={() => {
+                    if (!session) {
+                      if (pathname !== null) {
+                        window.localStorage.setItem('redirectUrl', pathname);
+                      }
+                      router.push('/auth/signin');
+                    }
+                  }}
+                >
+                  mon compte
+                </span>
               </div>
             </DropdownMenuTrigger>
 

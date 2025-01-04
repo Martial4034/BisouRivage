@@ -15,8 +15,17 @@ export async function POST(request: Request) {
     const body = await request.json() as PriceRequest;
     const { productId, size, frameOption, frameColor, quantity = 1 } = body;
 
+    console.log("💰 Calcul du prix pour:", {
+      productId,
+      size,
+      frameOption,
+      frameColor,
+      quantity
+    });
+
     // Vérifications de base
     if (quantity < 1) {
+      console.log("❌ Quantité invalide:", quantity);
       return NextResponse.json({ 
         error: "La quantité doit être supérieure à 0" 
       }, { status: 400 });
@@ -25,112 +34,171 @@ export async function POST(request: Request) {
     // Récupérer les informations du produit
     const productDoc = await getDoc(doc(db, "uploads", productId));
     if (!productDoc.exists()) {
+      console.log("❌ Produit non trouvé:", productId);
       return NextResponse.json({ 
         error: "Produit non trouvé" 
       }, { status: 404 });
     }
+
     const productData = productDoc.data();
+    if (!productData || !productData.sizes || !Array.isArray(productData.sizes)) {
+      console.error("❌ Structure du produit invalide:", productData);
+      return NextResponse.json({ 
+        error: "Structure du produit invalide" 
+      }, { status: 500 });
+    }
+
+    // Construire les informations du produit
+    const productInfo = {
+      name: productData.description || 'Sans titre',
+      artisteName: productData.artisteName || '',
+      artisteId: productData.artisteId || '',
+      image: productData.mainImage || productData.images?.[0]?.link || '/placeholder.jpg',
+    };
+
+    console.log("✅ Produit trouvé:", {
+      id: productId,
+      ...productInfo,
+      sizes: productData.sizes.length
+    });
 
     // Vérifier le stock et récupérer les données de taille
     const sizeData = productData.sizes.find((s: any) => s.size === size);
-    if (!sizeData) {
+    if (!sizeData || !sizeData.equivalentFrameSize) {
+      console.error(`❌ Format ${size} invalide ou incomplet:`, sizeData);
       return NextResponse.json({ 
-        error: `Format ${size} non trouvé pour le produit ${productId}` 
+        error: `Format ${size} non trouvé ou invalide pour le produit ${productId}` 
       }, { status: 404 });
     }
 
+    console.log("✅ Format trouvé:", {
+      size: sizeData.size,
+      stock: sizeData.stock,
+      equivalentFrameSize: sizeData.equivalentFrameSize
+    });
+
     // Vérification du stock
     if (quantity > sizeData.stock) {
+      console.log(`⚠️ Stock insuffisant. Demandé: ${quantity}, Disponible: ${sizeData.stock}`);
       return NextResponse.json({ 
         error: `Stock insuffisant. Disponible: ${sizeData.stock}`,
         data: { 
           stock: sizeData.stock,
-          productInfo: {
-            name: productData.name,
-            artisteName: productData.artisteName,
-            artisteId: productData.artisteId,
-            image: productData.images[0].link,
-          }
+          productInfo
         }
       }, { status: 400 });
     }
 
-    let basePrice = 0;
-    let framePrice = 0;
-    let frameData = null;
-
     // Récupérer le format de cadre correspondant
+    console.log(`🖼️ Recherche du format de cadre: ${sizeData.equivalentFrameSize}`);
     const formatDoc = await getDoc(doc(db, "formats", sizeData.equivalentFrameSize.replace('cm', '')));
     if (!formatDoc.exists()) {
+      console.log(`❌ Format de cadre ${sizeData.equivalentFrameSize} non trouvé`);
       return NextResponse.json({ 
         error: `Format de cadre ${sizeData.equivalentFrameSize} non trouvé` 
       }, { status: 404 });
     }
 
     const formatData = formatDoc.data();
+    if (!formatData || !formatData.frameOptions || !Array.isArray(formatData.frameOptions)) {
+      console.error("❌ Structure du format invalide:", formatData);
+      return NextResponse.json({ 
+        error: "Structure du format invalide" 
+      }, { status: 500 });
+    }
+
+    console.log("✅ Options de cadre trouvées:", formatData.frameOptions);
 
     // Trouver l'option sans cadre pour le prix de base
     const baseFrameOption = formatData.frameOptions.find((f: any) => f.color === "none");
-    if (!baseFrameOption) {
+    if (!baseFrameOption || typeof baseFrameOption.price !== 'number') {
+      console.log("❌ Prix de base non trouvé:", baseFrameOption);
       return NextResponse.json({ 
         error: "Prix de base non trouvé" 
       }, { status: 404 });
     }
 
-    basePrice = baseFrameOption.price;
+    let basePrice = baseFrameOption.price;
+    let framePrice = 0;
+    let frameData = null;
 
     // Si avec cadre, ajouter le prix du cadre
-    if (frameOption === "avec" && frameColor && frameColor !== "none") {
+    if (frameOption === "avec" && frameColor) {
+      console.log(`🎨 Recherche du prix pour la couleur: ${frameColor}`);
       const selectedFrameOption = formatData.frameOptions.find((f: any) => f.color === frameColor);
+      
       if (!selectedFrameOption) {
+        console.log(`❌ Couleur de cadre ${frameColor} non trouvée`);
         return NextResponse.json({ 
           error: `Couleur de cadre ${frameColor} non trouvée` 
         }, { status: 404 });
       }
 
+      if (!selectedFrameOption.available) {
+        console.log(`❌ Couleur de cadre ${frameColor} non disponible`);
+        return NextResponse.json({ 
+          error: `Couleur de cadre ${frameColor} non disponible` 
+        }, { status: 400 });
+      }
+
+      if (typeof selectedFrameOption.price !== 'number') {
+        console.log(`❌ Prix invalide pour la couleur ${frameColor}:`, selectedFrameOption.price);
+        return NextResponse.json({ 
+          error: `Prix invalide pour la couleur ${frameColor}` 
+        }, { status: 500 });
+      }
+
       frameData = selectedFrameOption;
       framePrice = selectedFrameOption.price - basePrice;
+      console.log("💰 Prix calculés:", {
+        basePrice,
+        framePrice,
+        total: basePrice + framePrice
+      });
     }
 
-    // Calcul du prix original sans réduction par quantité
-    const originalTotal = (basePrice + framePrice) * quantity;
+    // Calculs finaux
+    const baseTotal = basePrice * quantity;
+    const framePriceTotal = framePrice * quantity;
+    const originalTotal = baseTotal + framePriceTotal;
     const originalUnitPrice = basePrice + framePrice;
-
-    // Calcul des réductions par quantité
-    let discountPercentage = 0;
-    if (quantity >= 10) discountPercentage = 15;
-    else if (quantity >= 5) discountPercentage = 10;
-    else if (quantity >= 3) discountPercentage = 5;
-
     const totalBeforeDiscount = originalTotal;
-    const discount = (totalBeforeDiscount * discountPercentage) / 100;
-    const finalTotal = totalBeforeDiscount - discount;
-    const unitPrice = finalTotal / quantity;
+    const discount = 0; // Pas de réduction pour le moment
+    const finalTotal = totalBeforeDiscount;
+    const unitPrice = originalUnitPrice; // Prix unitaire reste le même
 
-    return NextResponse.json({
+    const response = {
       success: true,
       data: {
         id: productId,
-        basePrice,
-        framePrice,
+        basePrice, // Prix unitaire de base
+        framePrice, // Prix unitaire du cadre
         quantity,
-        discountPercentage,
-        originalTotal,        // Prix total original sans réduction
-        originalUnitPrice,    // Prix unitaire original sans réduction
+        discountPercentage: 0,
+        originalTotal, // Prix total (base + cadre) × quantité
+        originalUnitPrice, // Prix unitaire (base + cadre)
         totalBeforeDiscount,
         discount,
         totalPrice: finalTotal,
         unitPrice,
-        productInfo: {
-          name: productData.name,
-          artisteName: productData.artisteName,
-          artisteId: productData.artisteId,
-          image: productData.images[0].link,
-        },
+        productInfo,
         frameInfo: frameData,
         stock: sizeData.stock
       }
+    };
+
+    console.log("✅ Réponse finale:", {
+      id: productId,
+      name: response.data.productInfo.name,
+      basePrice: response.data.basePrice,
+      framePrice: response.data.framePrice,
+      quantity: response.data.quantity,
+      unitPrice: response.data.unitPrice,
+      totalPrice: response.data.totalPrice,
+      hasFrame: frameOption === "avec"
     });
+
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error("❌ Erreur lors du calcul du prix:", error);

@@ -437,25 +437,45 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
     console.log("💲 Calcul du prix - Données actuelles:", {
       selectedSize,
       frameOption,
-      selectedFrame
+      selectedFrame,
+      selectedColor
     });
     
     if (!selectedSize) return 0;
     
+    const sizeData = imageData?.sizes.find(s => s.size === selectedSize);
+    if (!sizeData) {
+      console.log("❌ Données de taille non trouvées");
+      return 0;
+    }
+
+    const formatData = formats.find(f => f.size === sizeData.equivalentFrameSize);
+    if (!formatData) {
+      console.log("❌ Format correspondant non trouvé");
+      return 0;
+    }
+
+    console.log("📐 Format trouvé:", formatData);
+
     if (frameOption === "sans") {
-      const sizeData = imageData?.sizes.find(s => s.size === selectedSize);
-      console.log("📏 Données de taille trouvées:", sizeData);
-      
-      const formatData = formats.find(f => f.size === sizeData?.equivalentFrameSize);
-      console.log("📐 Format correspondant:", formatData);
-      
-      const baseFrameOption = formatData?.frameOptions.find(f => f.color === "none");
-      console.log("🏷️ Prix de base trouvé:", baseFrameOption?.price);
-      
-      return baseFrameOption?.price || 0;
+      const baseFrameOption = formatData.frameOptions.find(f => f.color === "none");
+      const price = baseFrameOption?.price || 0;
+      console.log("💰 Prix sans cadre:", price);
+      return price;
     } else {
-      console.log("🖼️ Prix du cadre sélectionné:", selectedFrame?.price);
-      return selectedFrame?.price || 0;
+      // Avec cadre
+      if (selectedFrame) {
+        const price = selectedFrame.price;
+        console.log("💰 Prix avec cadre sélectionné:", price);
+        return price;
+      } else {
+        // Chercher le cadre blanc par défaut
+        const defaultFrame = formatData.frameOptions.find(f => f.color === "blanc") || 
+                           formatData.frameOptions.find(f => f.color !== "none");
+        const price = defaultFrame?.price || 0;
+        console.log("💰 Prix avec cadre par défaut:", price);
+        return price;
+      }
     }
   };
 
@@ -463,38 +483,66 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
   const handleSizeChange = (size: string) => {
     console.log("🔄 Changement de taille:", size);
     setSelectedSize(size);
-    setSelectedFrame(null);
     
     const sizeData = imageData?.sizes.find(s => s.size === size);
-    console.log("📏 Données de la nouvelle taille:", sizeData);
-    
-    const formatData = formats.find(f => f.size === sizeData?.equivalentFrameSize);
-    console.log("📐 Nouveau format correspondant:", formatData);
-    
-    const baseFrameOption = formatData?.frameOptions.find(f => f.color === "none");
-    console.log("💰 Nouveau prix de base:", baseFrameOption?.price);
-    
-    if (baseFrameOption) {
-      setBasePrice(baseFrameOption.price);
+    if (!sizeData) {
+      console.log("❌ Données de taille non trouvées");
+      return;
+    }
+
+    const formatData = formats.find(f => f.size === sizeData.equivalentFrameSize);
+    if (!formatData) {
+      console.log("❌ Format correspondant non trouvé");
+      return;
+    }
+
+    console.log("📐 Format correspondant trouvé:", formatData);
+
+    if (frameOption === "avec") {
+      // Présélectionner le cadre blanc ou le premier cadre disponible
+      const defaultColor = colorPoints.find(point => point.color === "blanc")?.color || colorPoints[0]?.color;
+      if (defaultColor) {
+        console.log("🎨 Présélection de la couleur:", defaultColor);
+        handleColorSelect(defaultColor);
+      }
+    } else {
+      // Mode sans cadre
+      const baseFrameOption = formatData.frameOptions.find(f => f.color === "none");
+      if (baseFrameOption) {
+        console.log("💰 Prix de base mis à jour:", baseFrameOption.price);
+        setBasePrice(baseFrameOption.price);
+      }
     }
   };
 
   // Ajouter cette fonction pour gérer la sélection de couleur
   const handleColorSelect = (color: string) => {
-    console.log("🎨 Couleur sélectionnée:", color);
+    console.log("🎨 Sélection de la couleur:", color);
     setSelectedColor(color);
     
-    // Trouver le frame correspondant
-    const selectedFormat = formats.find(f => {
-      const sizeData = imageData?.sizes.find(s => s.size === selectedSize);
-      return f.size === sizeData?.equivalentFrameSize;
-    });
+    if (!selectedSize) {
+      console.log("❌ Aucune taille sélectionnée");
+      return;
+    }
 
-    const frameOption = selectedFormat?.frameOptions.find(f => f.color === color);
-    console.log("🖼️ Option de cadre correspondante:", frameOption);
-    
+    const sizeData = imageData?.sizes.find(s => s.size === selectedSize);
+    if (!sizeData) {
+      console.log("❌ Données de taille non trouvées");
+      return;
+    }
+
+    const formatData = formats.find(f => f.size === sizeData.equivalentFrameSize);
+    if (!formatData) {
+      console.log("❌ Format correspondant non trouvé");
+      return;
+    }
+
+    const frameOption = formatData.frameOptions.find(f => f.color === color);
     if (frameOption) {
+      console.log("✅ Option de cadre trouvée:", frameOption);
       setSelectedFrame(frameOption);
+    } else {
+      console.log("❌ Option de cadre non trouvée pour la couleur:", color);
     }
   };
 
@@ -761,13 +809,15 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
                 </Button>
                 <Button
                   onClick={() => {
-                    console.log("🔄 Option sélectionnée: avec cadre");
+                    console.log("🔄 Sélection du mode avec cadre");
                     setFrameOption("avec");
-                    // Présélectionner la première couleur disponible (blanc par défaut)
-                    const defaultColor = colorPoints.find(point => point.color === "blanc")?.color || colorPoints[0]?.color;
-                    if (defaultColor) {
-                      console.log("🎨 Présélection de la couleur:", defaultColor);
-                      handleColorSelect(defaultColor);
+                    
+                    if (selectedSize) {
+                      const defaultColor = colorPoints.find(point => point.color === "blanc")?.color || colorPoints[0]?.color;
+                      if (defaultColor) {
+                        console.log("🎨 Présélection de la couleur par défaut:", defaultColor);
+                        handleColorSelect(defaultColor);
+                      }
                     }
                   }}
                   variant={frameOption === "avec" ? "default" : "outline"}

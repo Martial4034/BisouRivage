@@ -1,73 +1,94 @@
 import { NextResponse } from 'next/server';
 import { firestoreAdmin } from '@/app/firebaseAdmin';
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const { certificateNumber } = await request.json();
+    const body = await req.json();
+    const identificationNumber = body.identificationNumber;
+    
+    console.log("Numéro reçu:", identificationNumber);
 
-    if (!certificateNumber || certificateNumber.length !== 8) {
+    if (!identificationNumber) {
       return NextResponse.json(
-        { message: 'Numéro de certificat invalide' },
+        { message: "Numéro d'identification manquant" },
         { status: 400 }
       );
     }
 
-    const ordersRef = firestoreAdmin.collection('orders');
-    const snapshot = await ordersRef.get();
-    let foundProduct = null;
-    let purchaseDate = null;
+    const uploadsRef = firestoreAdmin.collection('uploads');
+    const snapshot = await uploadsRef.get();
+    
+    console.log("Nombre de documents trouvés:", snapshot.size);
+
+    let found = false;
+    let productInfo = null;
 
     for (const doc of snapshot.docs) {
-      const orderData = doc.data();
-      
-      for (const product of orderData.products) {
-        if (product.identificationNumbersMap) {
-          for (const mapping of product.identificationNumbersMap) {
-            if (mapping.hasOwnProperty(certificateNumber)) {
-              foundProduct = {
-                productId: product.productId,
-                imageUrl: product.imageUrl,
-                artisteName: product.artisteName,
-                format: product.format,
-                name: product.name,
-                serialNumber: mapping[certificateNumber],
-                price: product.price,
-                purchaseDate: orderData.createdAt.toDate().toISOString(),
-                deliveryDate: orderData.deliveryDate.toDate().toISOString()
-              };
-              
-              purchaseDate = orderData.createdAt.toDate();
-              break;
-            }
+      const data = doc.data();
+      console.log("Document ID:", doc.id);
+      console.log("identificationNumbers:", data.identificationNumbers);
+
+      if (data.identificationNumbers && Array.isArray(data.identificationNumbers)) {
+        const matchingNumber = data.identificationNumbers.find(
+          (num: any) => {
+            console.log("Comparaison:", num.identificationNumber, "avec", identificationNumber);
+            return num.identificationNumber === identificationNumber;
           }
+        );
+
+        if (matchingNumber) {
+          const sizeInfo = data.sizes.find((size: any) => size.size === matchingNumber.size);
+          const price = sizeInfo ? sizeInfo.price : null;
+
+          const firstImage = data.images && data.images.length > 0 
+            ? data.images[0].link 
+            : data.mainImage;
+
+          found = true;
+          productInfo = {
+            productId: doc.id,
+            serialNumber: matchingNumber.serialNumber,
+            size: matchingNumber.size,
+            artisteName: data.artisteName,
+            artisteEmail: data.artisteEmail,
+            mainImage: data.mainImage,
+            firstImageUrl: firstImage,
+            format: data.format,
+            price: price,
+            identificationNumber: matchingNumber.identificationNumber,
+            createdAt: data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString('fr-FR') : null
+          };
+          console.log("Correspondance trouvée:", productInfo);
+          break;
         }
-        
-        if (foundProduct) break;
       }
-      
-      if (foundProduct) break;
     }
 
-    if (!foundProduct) {
+    if (!found) {
+      console.log("Aucune correspondance trouvée");
       return NextResponse.json(
-        { message: 'Numéro de certificat non trouvé' },
+        { 
+          message: "Numéro d'identification non trouvé",
+          isValid: false 
+        },
         { status: 404 }
       );
     }
 
     return NextResponse.json({
-      message: 'Certificat vérifié avec succès',
-      product: foundProduct,
-      purchaseDate,
+      message: "Numéro d'identification valide",
+      isValid: true,
+      productInfo
     });
 
-  } catch (error) {
-    console.error('Erreur lors de la vérification du certificat:', error);
+  } catch (error: any) {
+    console.error("Erreur complète:", error);
     return NextResponse.json(
-      { message: 'Erreur lors de la vérification du certificat' },
+      { 
+        message: error.message,
+        isValid: false 
+      }, 
       { status: 500 }
     );
   }
 }
-
-

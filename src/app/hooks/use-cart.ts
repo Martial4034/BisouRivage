@@ -87,6 +87,7 @@ export const useInitializeCart = () => {
     if (!isInitialized) {
       console.log("🛒 Initialisation du panier...");
       initializeCart();
+      console.log("🛒 Initialisation du panier terminée", initializeCart);
     }
   }, [initializeCart, isInitialized]);
 

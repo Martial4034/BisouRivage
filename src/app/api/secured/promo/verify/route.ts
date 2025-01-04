@@ -11,13 +11,14 @@ interface PromoCodeResponse {
   message: string;
   discount?: number;
   id?: string;
+  couponId?: string;
 }
 
 export async function POST(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   if (!token) {
     return NextResponse.json(
-      { error: 'Non autorisé' },
+      { error: 'Il semblerait que vous ne soyez pas connecté à votre compte.' },
       { status: 401 }
     );
   }
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
       valid: true,
       discount: coupon.percent_off || (coupon.amount_off ? coupon.amount_off / 100 : 0),
       id: promoCode.id,
+      couponId: promoCode.coupon.id,
       message: "Code promo appliqué avec succès"
     };
 
