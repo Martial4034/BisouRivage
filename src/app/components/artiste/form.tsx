@@ -22,19 +22,26 @@ const artisteNameSchema = z.object({
 });
 
 const schema = z.object({
-  description: z.string().min(1, 'La description est requise'),
-  format: z.enum(['vertical', 'horizontal'], {
-    required_error: "Le format est requis",
+  title: z.string().optional(),
+  description: z.string()
+    .min(10, 'La description doit contenir au moins 10 caractères')
+    .max(1000, 'La description ne doit pas dépasser 1000 caractères'),
+  format: z.enum(['horizontal', 'vertical'], {
+    required_error: 'Veuillez sélectionner un format',
+    invalid_type_error: 'Format invalide'
   }),
-  images: z.array(z.any()).min(1, 'Au moins deux images sont requises'),
-  sizes: z.array(
-    z.object({
-      size: z.string(),
-      equivalentFrameSize: z.string(),
-      stock: z.number().min(3, "Le stock doit être supérieur ou égal à 4"),
-    })
-  ).min(1, 'Vous devez sélectionner au moins un format'),
+  sizes: z.array(z.object({
+    size: z.string(),
+    equivalentFrameSize: z.string(),
+    stock: z.number().min(1, 'Le stock doit être supérieur à 0'),
+    initialStock: z.number().min(1, 'Le stock initial doit être supérieur à 0'),
+    nextSerialNumber: z.number().min(1)
+  })).min(1, 'Veuillez sélectionner au moins une taille'),
+  images: z.array(z.any()).min(1, 'Veuillez ajouter au moins une image')
 });
+
+// Ajouter un type pour les données du formulaire
+type FormData = z.infer<typeof schema>;
 
 const isValidId = (id: string) => {
   const regex = /^[VH]\d+$/;
@@ -56,7 +63,16 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUpdatingArtisteName, setIsUpdatingArtisteName] = useState(false);
 
-  const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm({ resolver: zodResolver(schema), });
+  const { register, handleSubmit, formState: { errors }, setValue, reset, watch } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      title: '',
+      description: '',
+      format: undefined,
+      sizes: [],
+      images: []
+    }
+  });
 
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -74,9 +90,9 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
   const { register: registerArtisteName, handleSubmit: handleSubmitArtisteName, formState: { errors: errorsArtisteName },} = useForm<{ artiste_name: string }>({ resolver: zodResolver(artisteNameSchema),});
 
   const sizesWithDescription = [
-    { size: "A4", equivalentFrameSize: '30x40cm', description: 'Petit Format (20x30)  30€ A4' },
-    { size: "A3", equivalentFrameSize: '40x50cm', description: 'Moyen format (30x40) 60€ A3' },
-    { size: "A2", equivalentFrameSize: '50x70cm', description: 'Grand format (40x70) 120€ A2' }
+    { size: "A4", equivalentFrameSize: '30x40cm', description: 'Format A4' },
+    { size: "A3", equivalentFrameSize: '40x50cm', description: 'Format A3' },
+    { size: "A2", equivalentFrameSize: '50x70cm', description: 'Format A2' }
   ];
 
   useEffect(() => {
@@ -169,18 +185,40 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
   };
 
   const handleImageChange = (index: number, file: File | null) => {
+    console.log("🖼️ Tentative d'ajout d'image:", {
+      index,
+      file: file ? {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      } : null
+    });
+
     setUploadedImages((prevImages) => {
       const newImages = [...prevImages];
       newImages[index] = file;
+      console.log("📸 État des images après ajout:", newImages.map(img => 
+        img instanceof File ? `File: ${img.name}` : 
+        img ? 'Existing image' : 'Empty slot'
+      ));
       return newImages;
     });
-    setValue('images', [...uploadedImages]);
+
+    // Mettre à jour le champ 'images' du formulaire
+    const currentImages = uploadedImages.map((img, i) => i === index ? file : img);
+    console.log("🔄 Mise à jour du champ images dans le formulaire");
+    setValue('images', currentImages.filter(img => img !== null));
   };
 
   const handleRemoveImage = (index: number) => {
+    console.log("🗑️ Suppression de l'image à l'index:", index);
     setUploadedImages((prevImages) => {
       const newImages = [...prevImages];
       newImages[index] = null;
+      console.log("📸 État des images après suppression:", newImages.map(img => 
+        img instanceof File ? `File: ${img.name}` : 
+        img ? 'Existing image' : 'Empty slot'
+      ));
       return newImages;
     });
   };
@@ -219,59 +257,156 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
     setValue('sizes', selectedSizes);
   };
 
-  const onSubmit = async (data: any) => {
+  const getErrorMessage = (error: any): string => {
+    if (typeof error === 'string') return error;
+    if (error?.message) return error.message;
+    if (error?.type === 'required') return 'Ce champ est requis';
+    if (error?.type === 'minLength') return 'Ce champ est trop court';
+    if (error?.type === 'maxLength') return 'Ce champ est trop long';
+    if (error?.type === 'pattern') return 'Format invalide';
+    return 'Une erreur est survenue';
+  };
+
+  const onSubmit = async (data: FormData) => {
+    console.log("\n🚀 DÉBUT DU PROCESSUS DE SOUMISSION");
+    console.log("================================================");
+
+    console.log("📝 Vérification finale des données:", {
+      title: editId ? data.title : '',
+      description: data.description,
+      format: data.format,
+      sizes: selectedSizes,
+      imagesCount: uploadedImages.filter(img => img !== null).length
+    });
+
     setIsLoading(true);
     setError('');
     setSuccess('');
 
     try {
-      if (!uploadedImages.some((image) => image)) {
-        setError('Vous devez uploader au moins deux images.');
-        setIsLoading(false);
-        return;
-      }
+      console.log("\n📋 VALIDATION DES DONNÉES");
+      console.log("------------------------------------------------");
 
+      // Vérification des images
+      const validImages = uploadedImages.filter((image) => image !== null);
+      console.log(`🖼️ Images valides trouvées: ${validImages.length}`);
+      validImages.forEach((img, idx) => {
+        if (img instanceof File) {
+          console.log(`   Image ${idx + 1}: ${img.name} (${Math.round(img.size / 1024)}KB)`);
+        } else {
+          console.log(`   Image ${idx + 1}: URL existante`);
+        }
+      });
+
+      if (validImages.length === 0) {
+        throw new Error('Vous devez uploader au moins une image.');
+      }
+      console.log("✅ Validation des images réussie");
+
+      // Vérification des tailles
+      console.log("\n📏 Vérification des tailles sélectionnées:");
+      selectedSizes.forEach((size, idx) => {
+        console.log(`   Taille ${idx + 1}: ${size.size} (Stock: ${size.stock})`);
+      });
+
+      if (selectedSizes.length === 0) {
+        throw new Error('Vous devez sélectionner au moins une taille.');
+      }
+      console.log("✅ Validation des tailles réussie");
+
+      console.log("\n📦 PRÉPARATION DU FORMDATA");
+      console.log("------------------------------------------------");
       const formData = new FormData();
+      formData.append('title', editId ? (data.title || '') : '');
       formData.append('description', data.description);
       formData.append('artiste_name', user?.artiste_name || '');
       formData.append('format', data.format);
       formData.append('sizes', JSON.stringify(selectedSizes));
+      console.log("✅ Données de base ajoutées au FormData");
 
+      // Ajout des images au FormData
+      console.log("\n📤 AJOUT DES IMAGES AU FORMDATA");
+      let imageCount = 0;
       uploadedImages.forEach((image, index) => {
-        if (image && (image instanceof File)) {
-          formData.append(`images_${index}`, image);
-        } else if (image && (image as { link: string }).link) {
-          formData.append(`images_${index}`, (image as { link: string }).link);
+        if (image) {
+          if (image instanceof File) {
+            console.log(`   Ajout image ${index}: ${image.name} (${Math.round(image.size / 1024)}KB)`);
+            formData.append(`images_${index}`, image);
+            imageCount++;
+          } else if ((image as { link: string }).link) {
+            console.log(`   Ajout lien image ${index}: ${(image as { link: string }).link}`);
+            formData.append(`images_${index}`, (image as { link: string }).link);
+            imageCount++;
+          }
         }
       });
+      console.log(`✅ Total des images ajoutées: ${imageCount}`);
 
+      console.log("\n🌐 ENVOI DE LA REQUÊTE");
+      console.log("------------------------------------------------");
       const apiEndpoint = editId ? `/api/artiste/edit/${editId}` : '/api/artiste/upload';
+      console.log(`📡 Endpoint: ${apiEndpoint}`);
+
+      console.log("⏳ Envoi en cours...");
       const response = await fetch(apiEndpoint, {
         method: 'POST',
         body: formData,
       });
 
+      console.log(`📡 Statut de la réponse: ${response.status}`);
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message || "L'upload ou la mise à jour a échoué.");
+      console.log("📥 Réponse reçue:", result);
 
+      if (!response.ok) {
+        throw new Error(result.message || "L'upload ou la mise à jour a échoué.");
+      }
+
+      console.log("\n✅ OPÉRATION RÉUSSIE");
+      console.log("================================================");
       setSuccess(editId ? 'Mise à jour réussie!' : 'Images et formats uploadés avec succès!');
       router.push('/dashboard/artiste/manage');
+
     } catch (error: any) {
-      setError(error.message);
+      console.error("\n❌ ERREUR DÉTECTÉE");
+      console.error("------------------------------------------------");
+      console.error("Message:", getErrorMessage(error));
+      console.error("Détails:", error);
+      setError(getErrorMessage(error));
     } finally {
       setIsLoading(false);
+      console.log("\n🏁 FIN DU PROCESSUS");
+      console.log("================================================\n");
     }
   };
 
   return (
     <>
       <form onSubmit={handleSubmit(onSubmit)} className="max-w-6xl mx-auto p-8 bg-white shadow-lg rounded-lg mt-8">
-        <h1 className="text-3xl mb-8 text-left font-semibold text-gray-800">{editId ? "Modifier l'Upload" : "Upload des photos"}</h1>
-        {/* Form content */}
+        <h1 className="text-3xl mb-8 text-left font-semibold text-gray-800">
+          {editId ? "Modifier l'Upload" : "Upload des photos"}
+        </h1>
+
+        {/* Titre - uniquement visible en mode édition */}
+        {editId && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700">
+              Titre de l'œuvre*
+            </label>
+            <input
+              {...register('title')}
+              type="text"
+              className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="Entrez le titre de votre œuvre"
+            />
+            {errors.title && (
+              <p className="text-red-500 mt-1">{getErrorMessage(errors.title)}</p>
+            )}
+          </div>
+        )}
 
         {/* Format */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700">Format</label>
+          <label className="block text-sm font-medium text-gray-700">Format*</label>
           <div className="mt-2 flex items-center space-x-6">
             <label className="inline-flex items-center">
               <input
@@ -292,18 +427,23 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
               <span className="ml-2 text-sm text-gray-600">Horizontal</span>
             </label>
           </div>
-          {errors.format && <p className="text-red-500 mt-1">{String(errors.format.message)}</p>}
+          {errors.format && (
+            <p className="text-red-500 mt-1">{getErrorMessage(errors.format)}</p>
+          )}
         </div>
 
         {/* Description */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700">Description</label>
+          <label className="block text-sm font-medium text-gray-700">Description*</label>
           <textarea
             {...register('description')}
-            className="form-textarea mt-2 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
             rows={3}
+            placeholder="Décrivez votre œuvre"
           ></textarea>
-          {errors.description && <p className="text-red-500 mt-1">{String(errors.description.message)}</p>}
+          {errors.description && (
+            <p className="text-red-500 mt-1">{getErrorMessage(errors.description)}</p>
+          )}
         </div>
 
         {/* Toggle Group pour les formats et le stock */}
@@ -341,75 +481,128 @@ export default function ArtisteFormContent({ editId }: ArtisteFormContentProps) 
           {errors.sizes && <p className="text-red-500 mt-1">{String(errors.sizes.message)}</p>}
         </div>
 
-        {/* Gestion des images (6 cases maximum) */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700">Images (maximum 6)</label>
-          <div className="grid grid-cols-3 gap-4 mt-4">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="relative border-2 border-dashed border-gray-400 rounded-lg p-2 w-full h-40 flex items-center justify-center">
-                {uploadedImages[index] instanceof File ? (
-                  <>
-                    <img
-                      src={URL.createObjectURL(uploadedImages[index] as File)}
-                      alt={`Image ${index + 1} du produit à uploader`}
-                      className="object-cover w-full h-full"
-                    />
-                    <button
-                      type="button"
-                      className="absolute top-2 right-2 bg-white text-red-500 rounded-full p-1"
-                      onClick={() => handleRemoveImage(index)}
-                    >
-                      ✕
-                    </button>
-                  </>
-                ) : uploadedImages[index] && (uploadedImages[index] as { link: string }).link ? (
-                  <>
-                    <img
-                      src={(uploadedImages[index] as { link: string }).link}
-                      alt={`Image ${index + 1} du produit à uploader`}
-                      className="object-cover w-full h-full"
-                    />
-                    <button
-                      type="button"
-                      className="absolute top-2 right-2 bg-white text-red-500 rounded-full p-1"
-                      onClick={() => handleRemoveImage(index)}
-                    >
-                      ✕
-                    </button>
-                  </>
-                ) : (
-                  <div
-                    className="flex flex-col items-center justify-center text-gray-500 cursor-pointer w-full h-full"
-                    onClick={() => {
-                      const inputElement = document.getElementById(`upload-image-${index}`);
-                      if (inputElement) {
-                        inputElement.click();
-                      }
+        {/* Section upload d'images */}
+        <div className="space-y-4">
+          <label className="block text-sm font-medium text-gray-700">
+            Images* (6 maximum)
+          </label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {uploadedImages.map((image, index) => {
+              console.log(`🎯 Slot d'image ${index}:`, {
+                type: image ? (image instanceof File ? 'File' : 'Existing image') : 'Empty',
+                details: image instanceof File ? {
+                  name: image.name,
+                  size: image.size,
+                  type: image.type
+                } : image
+              });
+
+              return (
+                <div key={index} className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      console.log(`📸 Changement détecté dans l'input ${index}:`, {
+                        files: e.target.files,
+                        hasFile: e.target.files && e.target.files.length > 0
+                      });
+                      const file = e.target.files?.[0] || null;
+                      handleImageChange(index, file);
                     }}
+                    className="hidden"
+                    id={`image-upload-${index}`}
+                  />
+                  <label
+                    htmlFor={`image-upload-${index}`}
+                    className="block w-full aspect-square relative border-2 border-dashed border-gray-300 rounded-lg p-2 hover:border-gray-400 transition-colors cursor-pointer"
                   >
-                    <span>{`Image ${index + 1}`}</span>
-                    <input
-                      type="file"
-                      id={`upload-image-${index}`}
-                      className="hidden"
-                      accept="image/*"
-                      onChange={(e) => handleImageChange(index, e.target.files?.[0] || null)}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
+                    {image ? (
+                      <>
+                        <img
+                          src={image instanceof File ? URL.createObjectURL(image) : (image as { link: string }).link}
+                          alt={`Image ${index + 1}`}
+                          className="w-full h-full object-cover rounded-lg"
+                          onLoad={() => console.log(`✅ Image ${index} chargée avec succès`)}
+                          onError={(e) => console.error(`❌ Erreur de chargement de l'image ${index}:`, e)}
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            console.log(`🗑️ Clic sur le bouton de suppression pour l'image ${index}`);
+                            handleRemoveImage(index);
+                          }}
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center">
+                          <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          <p className="mt-1 text-sm text-gray-600">Cliquez ou glissez une image</p>
+                        </div>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              );
+            })}
           </div>
-          {errors.images && <p className="text-red-500 mt-1">{String(errors.images.message)}</p>}
+          {errors.images && (
+            <p className="text-red-500 text-sm mt-1">
+              {getErrorMessage(errors.images)}
+            </p>
+          )}
         </div>
 
         {/* Submit Button */}
-        <Button disabled={isLoading} type="submit" className="w-full py-3 bg-indigo-600 text-white hover:bg-white hover:border-indigo-600 hover:text-indigo-600 transition-all duration-300">
-          {isLoading ? <CircularProgress size={20} /> : editId ? 'Mettre à jour' : 'Upload'}
-        </Button>
+        <div className="mt-6">
+          <Button 
+            type="submit"
+            disabled={isLoading}
+            className="w-full py-3 bg-indigo-600 text-white hover:bg-white hover:border-indigo-600 hover:text-indigo-600 transition-all duration-300"
+            onClick={() => {
+              console.log("🔘 Clic sur le bouton de soumission");
+              console.log("📋 État actuel du formulaire:", {
+                title: watch('title'),
+                description: watch('description'),
+                format: watch('format'),
+                sizes: selectedSizes,
+                images: uploadedImages.filter(img => img !== null)
+              });
+            }}
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center">
+                <CircularProgress size={20} className="mr-2" />
+                <span>Traitement en cours...</span>
+              </div>
+            ) : editId ? (
+              'Mettre à jour'
+            ) : (
+              'Upload'
+            )}
+          </Button>
+        </div>
 
-        {error && <p className="text-red-500 mt-4">{error}</p>}
-        {success && <p className="text-green-500 mt-4">{success}</p>}
+        {error && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-red-600">{error}</p>
+          </div>
+        )}
+        
+        {success && (
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+            <p className="text-green-600">{success}</p>
+          </div>
+        )}
       </form>
       {/* Dialog pour le nom complet */}
       <Dialog open={isDialogOpen}>

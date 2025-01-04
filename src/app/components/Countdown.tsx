@@ -14,7 +14,7 @@ const Countdown = ({ onExpire }: CountdownProps) => {
   const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
-    const targetDate = new Date('2025-01-04T12:00:00');
+    const targetDate = new Date('2025-01-06T12:30:00');
 
     const calculateTimeLeft = () => {
       const now = new Date().getTime();
