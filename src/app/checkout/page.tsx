@@ -884,7 +884,7 @@ const CheckoutPage = () => {
                         </Link>
                         <p className="mt-1 text-sm text-gray-500">
                           Format: {item.size}
-                          {item.frameOption === "avec" && ` - Cadre: ${item.frameColor}`}
+                          {item.frameOption === "avec" && ` + Cadre ${item.frameColor}`}
                         </p>
                         <Link 
                           href={`/sales/${item.id}`}

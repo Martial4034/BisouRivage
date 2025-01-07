@@ -40,7 +40,10 @@ export default function ImageCard({ imageUrl, secondImageUrl, title, format, id 
             />
         </Link>
       )}
-      <p className="text-center mt-2">{title}</p>
+      <p className="text-center font-medium text-gray-800 mt-4" 
+            style={{ fontFamily: 'Inter, sans-serif' }}
+      
+      >{title}</p>
     </div>
   );
 }

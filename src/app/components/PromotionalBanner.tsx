@@ -8,29 +8,29 @@ export default function PromotionalBanner() {
     <Dialog>
       <DialogTrigger asChild>
         <div 
-          className="w-full bg-[#FFEAE8] py-3 cursor-pointer overflow-hidden relative promotional-banner"
+          className="w-full bg-[#bbcdff] py-0.5 cursor-pointer overflow-hidden relative promotional-banner"
           role="button"
         >
           <div className="relative flex overflow-x-hidden">
             <div className="animate-scroll py-1 flex whitespace-nowrap">
               {[...Array(10)].map((_, index) => (
                 <div key={index} className="mx-4 flex items-center">
-                  <Gift className="w-5 h-5 text-[#F8200B]" />
-                  <span className="text-[#F8200B] font-medium px-2">
-                    3 + 1 OFFERT* - Profitez de notre offre exceptionnelle !
+                  {/* <Gift className="w-5 h-5 text-[#565656]" /> */}
+                  <span className="text-[#565656] font-normal px-2">
+                  3 + 1 OFFERT 🎁 *
                   </span>
-                  <Gift className="w-5 h-5 text-[#F8200B]" />
+                  {/* <Gift className="w-5 h-5 text-[#565656]" /> */}
                 </div>
               ))}
             </div>
             <div className="absolute top-0 animate-scroll2 py-1 flex whitespace-nowrap">
               {[...Array(10)].map((_, index) => (
                 <div key={index} className="mx-4 flex items-center">
-                  <Gift className="w-5 h-5 text-[#F8200B]" />
-                  <span className="text-[#F8200B] font-medium px-2">
-                    3 + 1 OFFERT* - Profitez de notre offre exceptionnelle !
+                  {/* <Gift className="w-5 h-5 text-[#565656]"/> */}
+                  <span className="text-[#565656] font-normal px-2">
+                   3 + 1 OFFERT 🎁 *
                   </span>
-                  <Gift className="w-5 h-5 text-[#F8200B]" />
+                  {/* <Gift className="w-5 h-5 text-[#565656]" /> */}
                 </div>
               ))}
             </div>

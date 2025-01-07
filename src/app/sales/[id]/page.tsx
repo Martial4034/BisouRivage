@@ -35,7 +35,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/app/components/ui/accordion";
-import PromotionalBanner from "@/app/components/PromotionalBanner";
+ import PromotionalBanner from "@/app/components/PromotionalBanner";
 
 // Interfaces importées
 import { ImageFirestoreData, ImageData } from "@/app/types";
@@ -592,8 +592,8 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
   const isVertical = imageData.format.toLowerCase() === "vertical";
 
   // Dimensions based on format
-  const mainImageHeight = isVertical ? 625 : 400; // 16:9 aspect ratio for horizontal images
-  const mainImageWidth = isVertical ? 410 : 600;
+  const mainImageHeight = isVertical ? 624 : 400; // 16:9 aspect ratio for horizontal images
+  const mainImageWidth = isVertical ? 416 : 600;
   const thumbnailHeight = isVertical ? 125 : 100;
 
   return (
@@ -756,46 +756,66 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
           </div>
 
           {/* Section Détails */}
-          <div className="flex-1 border-2 border-gray-300 p-6 rounded-none shadow">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">
-              Titre : {params.id}
-            </h2>
-            <p className="text-md text-gray-600 mb-2">
-              Artiste :{" "}
-              <span className="font-semibold">{imageData.artisteName}</span>
+          <div className="flex-1 border-2 border-gray-300 p-6 rounded-2xl shadow-lg">
+          <h2
+            className="text-[1.7rem] font-semibold text-gray-800 mb-4"
+            style={{ fontFamily: 'Inter, sans-serif' }}
+            >
+            {params.id}
+          
+          </h2>
+            <p className="text-md text-gray-800 mb-1.5">
+            Artiste :{" "}
+              <span className="font-semibold text-black">{imageData.artisteName}</span>
             </p>
-            <p className="text-md text-gray-600 mb-2">
-              Date :{" "}
-              <span className="font-semibold">{imageData.createdAt}</span>
+              <p className="text-md text-gray-800 mb-2">
+                  Date :{" "}
+                  <span className="font-semibold text-black">{imageData.createdAt}</span>
+              </p>
+            <p className="text-gray-600 italic mb-4">
+              {imageData.description}
             </p>
 
-            <p className="text-gray-700 mb-4">{imageData.description}</p>
-
-            {/* Ajout des nouvelles informations */}
-            <div className="pl-4 mb-6 space-y-2">
-              <p className="flex items-center gap-2">
-                <span className="font-semibold text-gray-700">→</span>
-                Impression pigment giclée sur papier fine Art mat
-              </p>
-              <p className="flex items-center gap-2">
-                <span className="text-gray-700 font-bold">→</span>
-                Tirages limité en{" "}
-                {selectedSize
-                  ? imageData.sizes.find((s) => s.size === selectedSize)
-                      ?.initialStock
-                  : "..."}{" "}
-                exemplaires
-              </p>
-              <p className="flex items-center gap-2">
-                <span className="text-gray-700 font-semibold">→</span>
-                Œuvre fournie avec un certificat d'authenticité NFC
-              </p>
-            </div>
+             {/* Ajout des nouvelles informations */}
+              <div className="pl-4 mb-7 space-y-2">
+                <div>
+                  <span className="text-gray-700 -ml-3 inline-block mr-2 relative top-[2px]">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                      <path d="M4 12h16M14 6l6 6-6 6" strokeWidth="2.2" stroke="currentColor" fill="none" />
+                    </svg>
+                  </span>
+                  <span>Impression pigment giclée sur </span>
+                  <span className="italic">papier fine Art mat</span>
+                </div>
+                <div>
+                  <span className="text-gray-700 -ml-3 inline-block mr-2 relative top-[2px]">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                      <path d="M4 12h16M14 6l6 6-6 6" strokeWidth="2.2" stroke="currentColor" fill="none" />
+                    </svg>
+                  </span>
+                  <span>Tirages limités en </span>
+                  <span className="italic">
+                    {selectedSize
+                      ? imageData.sizes.find((s) => s.size === selectedSize)?.initialStock
+                      : "..."}{" "}
+                    exemplaires
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-700 -ml-3 inline-block mr-2 relative top-[2px]">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                      <path d="M4 12h16M14 6l6 6-6 6" strokeWidth="2.2" stroke="currentColor" fill="none" />
+                    </svg>
+                  </span>
+                  <span>Œuvre fournie avec un </span>
+                  <span className="italic">certificat d'authenticité NFC</span>
+                </div>
+              </div>
 
             {/* Sélection du cadre */}
             <div className="mb-6">
-              <h3 className="text-xl mb-2">Options de finition</h3>
-              <div className="flex gap-2 mb-4">
+              <h3 className="text-l font-medium text-black mt-1 mb-3">TYPE DE FINITION :</h3>
+              <div className="flex gap-2 mb-6">
                 <Button
                   onClick={() => {
                     console.log("🔄 Option sélectionnée: sans cadre");
@@ -827,8 +847,8 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
               </div>
 
               {/* Sélection des tailles */}
-              <div className="mb-4">
-                <h4 className="text-sm mb-2">Format :</h4>
+              <div className="mb-6">
+                <h4 className="text-l font-medium text-black mt-1 mb-3">FORMAT :</h4>
                 <div className="flex flex-wrap gap-2">
                   {imageData.sizes.map((size) => (
                     <Button
@@ -844,15 +864,15 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
 
               {/* Options de couleur si "avec cadre" est sélectionné */}
               {frameOption === "avec" && selectedSize && (
-                <div className="mt-4">
-                  <h4 className="text-sm mb-2">Sélectionnez une couleur :</h4>
+                <div className="mt-0">
+                  <h4 className="text-l font-medium text-black mb-4">COULEUR :</h4>
                   
                   {isLoadingColors ? (
                     <div className="flex justify-center">
                       <CircularProgress size={24} />
                     </div>
                   ) : (
-                    <div className="flex flex-wrap gap-4 mb-6">
+                    <div className="flex flex-wrap gap-4 mb-10">
                       {colorPoints.map((point) => {
                         console.log(`🎨 Tentative d'affichage du point de couleur:`, {
                           color: point.color,
@@ -880,11 +900,11 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
                               rounded-full 
                               p-0.5
                               ${selectedColor === point.color 
-                                ? 'border-4 border-blue-500' 
+                                ? 'border-2 border-blue-500' 
                                 : 'border border-gray-300 hover:border-gray-400'
                               }
                             `}>
-                              <div className="relative w-[30px] h-[30px] rounded-full overflow-hidden bg-gray-100">
+                              <div className="relative w-[30px] h-[30px] rounded-full overflow-hidden bg-gray-50">
                                 <Image
                                   src={point.urlPoint}
                                   alt={`Couleur ${point.color}`}
@@ -921,7 +941,7 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
                   )}
 
                   {/* Aperçu du cadre sélectionné */}
-                  {selectedFrame && (
+                  {/* selectedFrame && (
                     <div className="mt-8">
                       <h4 className="text-sm mb-2">Aperçu du cadre :</h4>
                       <div className="relative h-40 w-full">
@@ -934,14 +954,14 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
                       </div>
                       <p className="text-center mt-2">{selectedFrame.name}</p>
                     </div>
-                  )}
+                  ) */}
                 </div>
               )}
             </div>
 
             {/* Prix et Ajouter au Panier */}
             <div className="mt-6">
-              <p className="text-2xl font-bold mb-4">Prix: {calculatePrice()}€</p>
+              <p className="text-2xl font-bold mb-4">Prix : {calculatePrice()}€</p>
               <Button
                 onClick={handleAddToCart}
                 className="w-full"
@@ -989,54 +1009,78 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
               </div>
             )}
 
-            {/* Accordion pour Livraison et Retours */}
-            <div className="mt-6">
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="shipping">
-                  <AccordionTrigger className="text-left font-semibold">
-                    Livraison et Retours
-                  </AccordionTrigger>
-                  <AccordionContent className="text-sm text-gray-600 space-y-4">
-                    <p>
-                      Comme nous manipulons des œuvres d'art fragiles, nous
-                      emballons soigneusement toutes les pièces et utilisons
-                      uniquement un service signé pour toutes nos expéditions.
-                    </p>
+                              {/* Accordion pour les sections */}
+                  <div className="mt-6">
+                    <Accordion type="single" collapsible className="w-full">
+                      
+                      {/* Section À propos de l'artiste */}
+                      <AccordionItem value="about-artist">
+                        <AccordionTrigger className="text-left font-semibold">
+                          À propos de l'artiste
+                        </AccordionTrigger>
+                        <AccordionContent className="text-sm text-gray-600 space-y-4">
+                          <p>
+                            à venir
+                          </p>
+                        </AccordionContent>
+                      </AccordionItem>
+                      
+                    {/* Section Impression et Encadrement */}
+                      <AccordionItem value="printing-framing">
+                        <AccordionTrigger className="text-left font-semibold">
+                          Impression et Encadrement
+                        </AccordionTrigger>
+                        <AccordionContent className="text-sm text-gray-600 space-y-4">
+                                                    
+                                                  
+                            <p>
+                            Toutes nos impressions sont réalisées avec soin dans notre atelier, grâce à une imprimante professionnelle dédiée à l’art et à la photographie.
+                            </p>
+                            <p>
+                            À l’exception des cartes postales, chaque tirage est signé, numéroté et limité à 10 exemplaires par format. 
+                            Nous les réalisons uniquement sur commande afin d’éviter le surstock, le gaspillage et la surconsommation de papier et d’encre.
+                            </p> 
+                            <p>
+                            Pour garantir un rendu de qualité muséale, nous utilisons des encres pigmentaires d’archives, sans solvant, qui offrent une profondeur de couleurs exceptionnelle et une longévité dépassant 200 ans.                                 
+                            </p>                           
+                            <p>
+                            Pour le papier, nous avons choisi un « Fine Art » mat, blanc et sans acide, issu d’une gestion responsable des forêts. 
+                            Les formats A4, A5 et cartes postales sont imprimés sur un papier épais de 300g, tandis que les formats A3 et A2 utilisent un papier de 230g, 
+                            idéal pour être soigneusement roulés et transportés sans défaut.
+                            </p>                       
+                          <div>
+                            <h4 className="font-semibold"></h4>
+                            <p>
+                            Si vous optez pour une affiche encadrée, nous avons décidé de les accompagner d’un passe-partout en contrecollé sans acide, blanc, ouvert en biseau à 45°.                        
+                            Ce choix met en valeur le tirage et lui donne de la profondeur, tout en créant une marge qui isole visuellement l’œuvre de son cadre. 
+                            Il contribue également à une meilleure préservation de l’œuvre en limitant tout contact direct avec sa vitre.
+                            </p>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
 
-                    <p>
-                      Toutes les impressions A3 et A4 sont expédiées dans des
-                      boîtes de présentation à plat et les impressions A2 sont
-                      expédiées dans des tubes. Nous avons fait concevoir les
-                      tubes spécifiquement pour expédier cette tailles et ils
-                      sont beaucoup plus larges que les tubes habituels afin
-                      qu'ils ne conservent pas leur courbure.
-                    </p>
-
-                    <p>
-                      La livraison en France prend 2 à 3 jours ouvrables, en
-                      Europe environ 5 jours et dans le reste du monde 7 à 10
-                      jours. Veuillez noter que les délais de livraison sont
-                      actuellement variables.
-                    </p>
-
-                    <div className="space-y-2">
-                      <p>Expédition en France : 15€</p>
-                      <p>Expédition dans l'UE : 65€*</p>
-                      <p>Reste du monde : 65€*</p>
-                      <p>
-                        Retrait sur rendez-vous à Saint-Etienne au 32 Rue de la
-                        Résistance
-                      </p>
-                    </div>
-
-                    <p className="italic">
-                      * Des droits de douane et des droits supplémentaires
-                      peuvent s'appliquer et sont à la charge de l'acheteur.
-                    </p>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </div>
+                         {/* Section Livraison et Retours */}
+                        <AccordionItem value="shipping">
+                          <AccordionTrigger className="text-left font-semibold">
+                            Livraison et Retours
+                          </AccordionTrigger>
+                          <AccordionContent className="text-sm text-gray-600 space-y-4">
+                            <p>
+                            Comme nous manipulons des œuvres d'art fragiles, chaque pièce est soigneusement emballée pour assurer une protection optimale. 
+                            En mettant la qualité au cœur de nos priorités, nos délais de livraison ne sont pas fixes et peuvent varier de quelques jours à 2 ou 3 semaines. 
+                            Cela dit, nous vous tiendrons informé à chaque étape, par email ou par SMS.
+                            </p>
+                            <p>
+                            Pour garantir le bon état et le transport de vos commandes, les formats cartes postales et A4 sont expédiés à plat, 
+                            tandis que le format A2 et A3 est envoyé roulé dans des tubes spécialement conçus, plus larges que les standards habituels, afin d’éviter toute courbure importante.
+                            </p>                                                 
+                            <p className="italic">
+                            Pour les expéditions vers l'Union européenne et le reste du monde, des droits de douane ou frais supplémentaires peuvent s’appliquer et restent à la charge de l’acheteur.
+                            </p>
+                          </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                  </div>
           </div>
         </div>
       </div>
