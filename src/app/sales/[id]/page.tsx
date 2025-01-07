@@ -592,8 +592,8 @@ export default function ImageDetails({ params }: { params: { id: string } }) {
   const isVertical = imageData.format.toLowerCase() === "vertical";
 
   // Dimensions based on format
-  const mainImageHeight = isVertical ? 625 : 400; // 16:9 aspect ratio for horizontal images
-  const mainImageWidth = isVertical ? 410 : 600;
+  const mainImageHeight = isVertical ? 624 : 400; // 16:9 aspect ratio for horizontal images
+  const mainImageWidth = isVertical ? 416 : 600;
   const thumbnailHeight = isVertical ? 125 : 100;
 
   return (
