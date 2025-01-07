@@ -8,6 +8,7 @@ import { Toaster } from "@/app/components/ui/toaster";
 import Providers from './Providers';
 import ClientWrapper from './ClientWrapper';
 import Footer from '@/app/components/Footer';
+import PromotionalBanner from "@/app/components/PromotionalBanner";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <GoogleAnalytics gaId="G-S29V577DYX" />
         <Providers>
           <ClientWrapper>
+            <PromotionalBanner />
             <TopNavBar />
             <main className="flex-grow">
               {children}

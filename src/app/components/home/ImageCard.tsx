@@ -33,7 +33,7 @@ export default function ImageCard({ imageUrl, secondImageUrl, title, format, id 
             <img
               src={isHovered ? secondImageUrl : imageUrl} // Changer l'image en fonction du survol
               alt={title}
-              className={`object-cover w-full transition-opacity duration-500 ${
+              className={`object-cover w-full rounded-sm transition-opacity duration-500 ${
                 isLoaded ? 'opacity-100' : 'opacity-0'
               } ${format === 'V' ? 'h-[625px]' : 'h-[300px]'}`} // Taille ajustée pour plus de visibilité
               onLoad={() => setIsLoaded(true)}

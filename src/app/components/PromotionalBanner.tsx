@@ -1,4 +1,3 @@
-import { Gift } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/app/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip";
 import Link from "next/link";
@@ -8,33 +7,12 @@ export default function PromotionalBanner() {
     <Dialog>
       <DialogTrigger asChild>
         <div 
-          className="w-full bg-[#bbcdff] py-0.5 cursor-pointer overflow-hidden relative promotional-banner"
+          className="w-full bg-[#bbcdff] h-8 cursor-pointer flex items-center justify-center"
           role="button"
         >
-          <div className="relative flex overflow-x-hidden">
-            <div className="animate-scroll py-1 flex whitespace-nowrap">
-              {[...Array(10)].map((_, index) => (
-                <div key={index} className="mx-4 flex items-center">
-                  {/* <Gift className="w-5 h-5 text-[#565656]" /> */}
-                  <span className="text-[#565656] font-normal px-2">
-                  3 + 1 OFFERT 🎁 *
-                  </span>
-                  {/* <Gift className="w-5 h-5 text-[#565656]" /> */}
-                </div>
-              ))}
-            </div>
-            <div className="absolute top-0 animate-scroll2 py-1 flex whitespace-nowrap">
-              {[...Array(10)].map((_, index) => (
-                <div key={index} className="mx-4 flex items-center">
-                  {/* <Gift className="w-5 h-5 text-[#565656]"/> */}
-                  <span className="text-[#565656] font-normal px-2">
-                   3 + 1 OFFERT 🎁 *
-                  </span>
-                  {/* <Gift className="w-5 h-5 text-[#565656]" /> */}
-                </div>
-              ))}
-            </div>
-          </div>
+          <span className="text-[#565656] font-normal">
+            🎁 3 + 1 OFFERT 🎁
+          </span>
         </div>
       </DialogTrigger>
       
