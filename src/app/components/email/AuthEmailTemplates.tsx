@@ -67,7 +67,7 @@ export const SignInEmailTemplate: React.FC<Readonly<EmailTemplateProps>> = ({ ur
       <h2 style={{ fontSize: '24px', letterSpacing: '4px' }}>{code}</h2>
       <p style={textStyle}>Ce code est valable pendant 10 minutes.</p>
       <p style={textStyle}>Cliquez sur le bouton pour être redirigé :</p>
-      <a href={url} style={linkStyle}>Lien pour rentré mon code</a>
+      <a href={url} style={linkStyle}>Lien pour rentrer mon code</a>
       <p style={textStyle}>Si vous n'avez pas demandé cette connexion, veuillez ignorer cet email.</p>
       <p style={footerStyle}>Email : {email}</p>
     </body>
